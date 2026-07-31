@@ -26,7 +26,7 @@ class HomeViewModel(
     val selectedDateIso: StateFlow<String> = _selectedDateIso.asStateFlow()
 
     val userPreferences: StateFlow<UserPreferences> = preferencesRepository.userPreferencesFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, UserPreferences())
 
     // Last action for Undo
     private var lastSessionIdForUndo: Long? = null
@@ -65,7 +65,7 @@ class HomeViewModel(
                 }
             }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val overallSummary: StateFlow<AttendanceSummary> = combine(
         repository.allUnits,
@@ -75,7 +75,7 @@ class HomeViewModel(
             try { AttendanceStatus.valueOf(it.status) } catch (e: Exception) { null }
         }
         AttendanceCalculator.calculate(statuses, prefs.defaultTargetAttendance)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AttendanceCalculator.calculate(emptyList()))
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, AttendanceCalculator.calculate(emptyList()))
 
     fun selectDate(dateIso: String) {
         _selectedDateIso.value = dateIso
@@ -168,7 +168,7 @@ class HomeViewModel(
         val sessionId = lastSessionIdForUndo ?: return
         val previousUnits = lastUnitsStateForUndo ?: return
         viewModelScope.launch {
-            val session = repository.allSessions.first().find { it.id == sessionId } ?: return@launch
+            val session = repository.getSessionById(sessionId) ?: return@launch
             repository.createOrUpdateSessionWithUnits(session, previousUnits)
             lastSessionIdForUndo = null
             lastUnitsStateForUndo = null

@@ -233,15 +233,25 @@ fun SubjectsScreen(
                                         )
                                     }
 
+                                    val statusBadgeText = when {
+                                        summary.totalConductedUnits == 0 -> "No Records"
+                                        summary.percentage >= subject.targetPercentage -> {
+                                            if (summary.safeBunks > 0) "Safe: ${summary.safeBunks} ${if (summary.safeBunks == 1) "unit" else "units"}"
+                                            else "At Target"
+                                        }
+                                        else -> "Need ${summary.requiredUnitsToTarget} ${if (summary.requiredUnitsToTarget == 1) "unit" else "units"}"
+                                    }
+
                                     Surface(
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = MaterialTheme.colorScheme.surfaceVariant
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = if (summary.percentage >= subject.targetPercentage) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
                                     ) {
                                         Text(
-                                            text = summary.statusMessage,
+                                            text = statusBadgeText,
                                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.SemiBold
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (summary.percentage >= subject.targetPercentage) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
                                         )
                                     }
                                 }
@@ -253,6 +263,20 @@ fun SubjectsScreen(
                                         .height(6.dp),
                                     color = if (summary.percentage >= subject.targetPercentage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                                 )
+
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = summary.statusMessage,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }

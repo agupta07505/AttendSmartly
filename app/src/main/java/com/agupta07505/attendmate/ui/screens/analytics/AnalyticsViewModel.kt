@@ -30,7 +30,7 @@ class AnalyticsViewModel(
 ) : ViewModel() {
 
     val userPreferences: StateFlow<UserPreferences> = preferencesRepository.userPreferencesFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, UserPreferences())
 
     val analyticsState: StateFlow<AnalyticsState> = combine(
         repository.activeSubjects,
@@ -74,7 +74,7 @@ class AnalyticsViewModel(
         )
     }.stateIn(
         viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
+        SharingStarted.Eagerly,
         AnalyticsState(
             overallSummary = AttendanceCalculator.calculate(emptyList()),
             subjectSummaries = emptyList(),

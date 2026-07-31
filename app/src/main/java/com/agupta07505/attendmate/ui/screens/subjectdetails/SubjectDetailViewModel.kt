@@ -21,7 +21,7 @@ class SubjectDetailViewModel(
 ) : ViewModel() {
 
     val subject: StateFlow<SubjectEntity?> = repository.getSubjectByIdFlow(subjectId)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val subjectSessions: StateFlow<List<SessionWithUnits>> = combine(
         repository.getSessionsForSubject(subjectId),
@@ -31,7 +31,7 @@ class SubjectDetailViewModel(
             val sessionUnits = units.filter { it.sessionId == session.id }
             SessionWithUnits(session = session, units = sessionUnits)
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val summary: StateFlow<AttendanceSummary> = combine(
         subject,
@@ -42,7 +42,7 @@ class SubjectDetailViewModel(
             try { AttendanceStatus.valueOf(it.status) } catch (e: Exception) { null }
         }
         AttendanceCalculator.calculate(statuses, target)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AttendanceCalculator.calculate(emptyList()))
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, AttendanceCalculator.calculate(emptyList()))
 
     fun updateUnitStatus(unitId: Long, newStatus: AttendanceStatus) {
         viewModelScope.launch {

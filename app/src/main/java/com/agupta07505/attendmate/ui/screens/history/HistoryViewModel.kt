@@ -29,7 +29,7 @@ class HistoryViewModel(
     val statusFilter: StateFlow<AttendanceStatus?> = _statusFilter.asStateFlow()
 
     val subjects: StateFlow<List<SubjectEntity>> = repository.allSubjects
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val historyRecords: StateFlow<List<HistoryRecord>> = combine(
         repository.allSessions,
@@ -52,7 +52,7 @@ class HistoryViewModel(
                 HistoryRecord(session = session, subject = subject, units = sessionUnits)
             }
             .sortedByDescending { it.session.sessionDate }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun selectSubjectFilter(id: Long?) {
         _selectedSubjectId.value = id

@@ -20,7 +20,7 @@ class SettingsViewModel(
 ) : ViewModel() {
 
     val userPreferences: StateFlow<UserPreferences> = preferencesRepository.userPreferencesFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, UserPreferences())
 
     fun updateDefaultTargetAttendance(target: Double) {
         viewModelScope.launch {

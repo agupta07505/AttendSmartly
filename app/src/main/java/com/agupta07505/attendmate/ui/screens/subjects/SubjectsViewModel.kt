@@ -52,7 +52,7 @@ class SubjectsViewModel(
                 val summary = AttendanceCalculator.calculate(statuses, subject.targetPercentage)
                 SubjectWithSummary(subject = subject, summary = summary)
             }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query

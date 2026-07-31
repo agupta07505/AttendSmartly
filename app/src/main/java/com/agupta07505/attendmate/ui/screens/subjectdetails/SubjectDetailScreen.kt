@@ -124,14 +124,15 @@ fun SubjectDetailScreen(
 
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.surface,
+                                color = if (summary.percentage >= sub.targetPercentage) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
                                     text = summary.statusMessage,
                                     modifier = Modifier.padding(12.dp),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (summary.percentage >= sub.targetPercentage) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
                                 )
                             }
                         }

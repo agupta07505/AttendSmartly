@@ -54,14 +54,16 @@ class AttendMateRepository(
     suspend fun getSessionForTimetableAndDate(timetableEntryId: Long, dateStr: String) =
         attendanceDao.getSessionForTimetableAndDate(timetableEntryId, dateStr)
 
+    suspend fun getSessionById(sessionId: Long): AttendanceSessionEntity? = attendanceDao.getSessionById(sessionId)
+    suspend fun getUnitById(unitId: Long): AttendanceUnitEntity? = attendanceDao.getUnitById(unitId)
+
     suspend fun createOrUpdateSessionWithUnits(
         session: AttendanceSessionEntity,
         units: List<AttendanceUnitEntity>
     ): Long = attendanceDao.createOrUpdateSessionWithUnits(session, units)
 
     suspend fun updateUnitStatus(unitId: Long, newStatus: AttendanceStatus) {
-        val allU = attendanceDao.getAllUnits().first()
-        val target = allU.find { it.id == unitId } ?: return
+        val target = attendanceDao.getUnitById(unitId) ?: return
         attendanceDao.updateUnit(
             target.copy(
                 status = newStatus.name,

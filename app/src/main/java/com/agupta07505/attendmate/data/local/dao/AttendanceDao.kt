@@ -47,6 +47,9 @@ interface AttendanceDao {
     @Query("SELECT u.* FROM attendance_units u INNER JOIN attendance_sessions s ON u.sessionId = s.id WHERE s.subjectId = :subjectId")
     fun getAllUnitsForSubject(subjectId: Long): Flow<List<AttendanceUnitEntity>>
 
+    @Query("SELECT * FROM attendance_units WHERE id = :unitId")
+    suspend fun getUnitById(unitId: Long): AttendanceUnitEntity?
+
     @Query("SELECT * FROM attendance_units")
     fun getAllUnits(): Flow<List<AttendanceUnitEntity>>
 

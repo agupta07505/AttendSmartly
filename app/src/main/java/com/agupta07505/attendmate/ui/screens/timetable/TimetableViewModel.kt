@@ -24,7 +24,7 @@ class TimetableViewModel(
     val selectedDayOfWeek: StateFlow<Int> = _selectedDayOfWeek.asStateFlow()
 
     val activeSubjects: StateFlow<List<SubjectEntity>> = repository.activeSubjects
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val entriesForSelectedDay: StateFlow<List<TimetableWithSubject>> = combine(
         _selectedDayOfWeek,
@@ -37,7 +37,7 @@ class TimetableViewModel(
                 TimetableWithSubject(entry = entry, subject = subject)
             }
             .sortedBy { it.entry.startTime }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val allTimetableWithSubjects: StateFlow<List<TimetableWithSubject>> = combine(
         repository.allActiveTimetableEntries,
@@ -47,7 +47,7 @@ class TimetableViewModel(
             val subject = subjects.find { it.id == entry.subjectId } ?: return@mapNotNull null
             TimetableWithSubject(entry = entry, subject = subject)
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun selectDayOfWeek(day: Int) {
         _selectedDayOfWeek.value = day
