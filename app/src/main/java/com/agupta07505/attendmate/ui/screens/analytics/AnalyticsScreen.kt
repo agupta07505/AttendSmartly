@@ -115,7 +115,8 @@ fun AnalyticsScreen(
                         AttendanceDonutChart(
                             presentUnits = state.overallSummary.presentUnits,
                             absentUnits = state.overallSummary.absentUnits,
-                            cancelledUnits = state.overallSummary.cancelledUnits
+                            cancelledUnits = state.overallSummary.cancelledUnits,
+                            bunkedUnits = state.overallSummary.bunkedUnits
                         )
 
                         Row(
@@ -124,15 +125,19 @@ fun AnalyticsScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(com.agupta07505.attendmate.ui.theme.StatusPresent))
-                                Text("Present: ${state.overallSummary.presentUnits}", fontSize = 12.sp)
+                                Text("Present: ${state.overallSummary.presentUnits}", fontSize = 11.sp)
                             }
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(com.agupta07505.attendmate.ui.theme.StatusAbsent))
-                                Text("Absent: ${state.overallSummary.absentUnits}", fontSize = 12.sp)
+                                Text("Absent: ${state.overallSummary.absentUnits}", fontSize = 11.sp)
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(Color(0xFFFF9800)))
+                                Text("Bunked: ${state.overallSummary.bunkedUnits}", fontSize = 11.sp)
                             }
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(com.agupta07505.attendmate.ui.theme.StatusCancelled))
-                                Text("Cancelled: ${state.overallSummary.cancelledUnits}", fontSize = 12.sp)
+                                Text("Cancelled: ${state.overallSummary.cancelledUnits}", fontSize = 11.sp)
                             }
                         }
                     }
@@ -152,7 +157,7 @@ fun AnalyticsScreen(
             items(state.subjectSummaries) { item ->
                 val sub = item.subject
                 val summary = item.summary
-                val subColor = Color(sub.colorValue.toULong())
+                val subColor = Color(sub.colorValue.toInt())
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),

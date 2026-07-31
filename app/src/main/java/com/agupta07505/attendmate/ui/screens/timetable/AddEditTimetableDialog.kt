@@ -1,6 +1,7 @@
 package com.agupta07505.attendmate.ui.screens.timetable
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -120,15 +121,23 @@ fun AddEditTimetableDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     daysList.forEach { (dInt, dName) ->
                         FilterChip(
                             selected = dayOfWeek == dInt,
                             onClick = { dayOfWeek = dInt },
-                            label = { Text(dName.take(3)) },
-                            modifier = Modifier.weight(1f)
+                            label = {
+                                Text(
+                                    text = dName.take(3),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
                         )
                     }
                 }

@@ -24,16 +24,26 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
         when (action) {
             ACTION_MARK_PRESENT -> {
                 if (sessionId != -1L) {
+                    val pendingResult = goAsync()
                     CoroutineScope(Dispatchers.IO).launch {
-                        repository.markNextUnitStatus(sessionId, AttendanceStatus.PRESENT)
+                        try {
+                            repository.markNextUnitStatus(sessionId, AttendanceStatus.PRESENT)
+                        } finally {
+                            pendingResult.finish()
+                        }
                     }
                 }
                 cancelNotification(context, notificationId)
             }
             ACTION_MARK_ABSENT -> {
                 if (sessionId != -1L) {
+                    val pendingResult = goAsync()
                     CoroutineScope(Dispatchers.IO).launch {
-                        repository.markNextUnitStatus(sessionId, AttendanceStatus.ABSENT)
+                        try {
+                            repository.markNextUnitStatus(sessionId, AttendanceStatus.ABSENT)
+                        } finally {
+                            pendingResult.finish()
+                        }
                     }
                 }
                 cancelNotification(context, notificationId)

@@ -10,6 +10,7 @@ data class AttendanceSummary(
     val presentUnits: Int,
     val absentUnits: Int,
     val cancelledUnits: Int,
+    val bunkedUnits: Int = 0,
     val percentage: Double,
     val targetPercentage: Double,
     val safeBunks: Int,
@@ -28,12 +29,14 @@ object AttendanceCalculator {
     ): AttendanceSummary {
         val presentCount = statuses.count { it == AttendanceStatus.PRESENT }
         val absentCount = statuses.count { it == AttendanceStatus.ABSENT }
+        val bunkedCount = statuses.count { it == AttendanceStatus.BUNKED }
         val cancelledCount = statuses.count { it == AttendanceStatus.CANCELLED }
         
         return calculate(
             presentUnits = presentCount,
-            absentUnits = absentCount,
+            absentUnits = absentCount + bunkedCount,
             cancelledUnits = cancelledCount,
+            bunkedUnits = bunkedCount,
             targetPercentage = targetPercentage
         )
     }
@@ -45,6 +48,7 @@ object AttendanceCalculator {
         presentUnits: Int,
         absentUnits: Int,
         cancelledUnits: Int = 0,
+        bunkedUnits: Int = 0,
         targetPercentage: Double = 75.0
     ): AttendanceSummary {
         val safeTarget = targetPercentage.coerceIn(1.0, 100.0)
@@ -92,6 +96,7 @@ object AttendanceCalculator {
             presentUnits = presentUnits,
             absentUnits = absentUnits,
             cancelledUnits = cancelledUnits,
+            bunkedUnits = bunkedUnits,
             percentage = currentPercentage,
             targetPercentage = safeTarget,
             safeBunks = safeBunks,

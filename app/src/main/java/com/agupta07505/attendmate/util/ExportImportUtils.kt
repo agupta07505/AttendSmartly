@@ -1,6 +1,7 @@
 package com.agupta07505.attendmate.util
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import com.agupta07505.attendmate.data.local.entity.*
 import com.agupta07505.attendmate.data.repository.AttendMateRepository
@@ -22,9 +23,76 @@ data class AttendMateBackup(
     val holidays: List<HolidayEntity> = emptyList()
 )
 
+data class TimetableSharePackage(
+    val format: String = "ATTENDMATE_TIMETABLE_V1",
+    val exportedAt: Long = System.currentTimeMillis(),
+    val subjects: List<SubjectEntity> = emptyList(),
+    val timetableEntries: List<TimetableEntryEntity> = emptyList()
+)
+
 object ExportImportUtils {
 
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
+
+    suspend fun exportTimetableToJson(repository: AttendMateRepository): String {
+        val entries = repository.allActiveTimetableEntries.first()
+        val subjectIds = entries.map { it.subjectId }.toSet()
+        val allSubjects = repository.allSubjects.first()
+        val relevantSubjects = allSubjects.filter { subjectIds.contains(it.id) }
+
+        val pkg = TimetableSharePackage(
+            format = "ATTENDMATE_TIMETABLE_V1",
+            exportedAt = System.currentTimeMillis(),
+            subjects = relevantSubjects,
+            timetableEntries = entries
+        )
+        return gson.toJson(pkg)
+    }
+
+    suspend fun importTimetableFromJson(jsonString: String, repository: AttendMateRepository): Pair<Boolean, String> {
+        return try {
+            val pkg = gson.fromJson(jsonString, TimetableSharePackage::class.java)
+            if (pkg != null && pkg.timetableEntries.isNotEmpty()) {
+                val existingSubjects = repository.allSubjects.first().associateBy { it.name.trim().lowercase() }
+                val subjectIdMap = mutableMapOf<Long, Long>()
+
+                for (sub in pkg.subjects) {
+                    val existing = existingSubjects[sub.name.trim().lowercase()]
+                    if (existing != null) {
+                        subjectIdMap[sub.id] = existing.id
+                    } else {
+                        val newId = repository.insertSubject(sub.copy(id = 0))
+                        subjectIdMap[sub.id] = newId
+                    }
+                }
+
+                var importedCount = 0
+                for (entry in pkg.timetableEntries) {
+                    val newSubjectId = subjectIdMap[entry.subjectId] ?: entry.subjectId
+                    repository.insertTimetableEntry(
+                        entry.copy(
+                            id = 0,
+                            subjectId = newSubjectId,
+                            createdAt = System.currentTimeMillis()
+                        )
+                    )
+                    importedCount++
+                }
+                Pair(true, "Successfully imported $importedCount timetable entries!")
+            } else {
+                val backup = gson.fromJson(jsonString, AttendMateBackup::class.java)
+                if (backup != null && backup.timetableEntries.isNotEmpty()) {
+                    restoreFromJson(jsonString, repository)
+                    Pair(true, "Imported ${backup.timetableEntries.size} timetable entries!")
+                } else {
+                    Pair(false, "Invalid timetable JSON or empty entries.")
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Pair(false, "Failed to import timetable: ${e.message}")
+        }
+    }
 
     suspend fun exportToJson(repository: AttendMateRepository): String {
         val backup = AttendMateBackup(

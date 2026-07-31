@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,7 +27,8 @@ import com.agupta07505.attendmate.data.local.entity.SubjectEntity
 @Composable
 fun SubjectsScreen(
     viewModel: SubjectsViewModel,
-    onNavigateToSubjectDetail: (subjectId: Long) -> Unit
+    onNavigateToSubjectDetail: (subjectId: Long) -> Unit,
+    onNavigateBack: () -> Unit = {}
 ) {
     val subjectsWithSummary by viewModel.subjectsWithSummary.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -40,6 +42,11 @@ fun SubjectsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Subjects", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
                 actions = {
                     IconButton(
                         onClick = { viewModel.toggleShowArchived(!showArchived) },
@@ -146,7 +153,7 @@ fun SubjectsScreen(
                     items(subjectsWithSummary) { item ->
                         val subject = item.subject
                         val summary = item.summary
-                        val subjectColor = Color(subject.colorValue.toULong())
+                        val subjectColor = Color(subject.colorValue.toInt())
 
                         ElevatedCard(
                             modifier = Modifier

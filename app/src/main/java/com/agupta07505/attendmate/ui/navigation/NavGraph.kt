@@ -119,7 +119,16 @@ fun NavGraph(
 
             composable(Screen.Timetable.route) {
                 val timetableVm: TimetableViewModel = getViewModel { app -> TimetableViewModel(app.repository) }
-                TimetableScreen(viewModel = timetableVm)
+                TimetableScreen(
+                    viewModel = timetableVm,
+                    onNavigateBack = {
+                        if (!navController.popBackStack()) {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Home.route) { inclusive = true }
+                            }
+                        }
+                    }
+                )
             }
 
             composable(Screen.Subjects.route) {
@@ -128,6 +137,13 @@ fun NavGraph(
                     viewModel = subjectsVm,
                     onNavigateToSubjectDetail = { subId ->
                         navController.navigate(Screen.SubjectDetail.createRoute(subId))
+                    },
+                    onNavigateBack = {
+                        if (!navController.popBackStack()) {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Home.route) { inclusive = true }
+                            }
+                        }
                     }
                 )
             }

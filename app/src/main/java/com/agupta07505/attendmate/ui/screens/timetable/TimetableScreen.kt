@@ -1,5 +1,9 @@
 package com.agupta07505.attendmate.ui.screens.timetable
 
+import android.content.Intent
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,7 +20,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,14 +34,36 @@ import com.agupta07505.attendmate.util.DateUtils
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimetableScreen(
-    viewModel: TimetableViewModel
+    viewModel: TimetableViewModel,
+    onNavigateBack: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+
     val selectedDayOfWeek by viewModel.selectedDayOfWeek.collectAsState()
     val entriesForSelectedDay by viewModel.entriesForSelectedDay.collectAsState()
     val activeSubjects by viewModel.activeSubjects.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var editingEntry by remember { mutableStateOf<TimetableEntryEntity?>(null) }
+
+    var showShareDialog by remember { mutableStateOf(false) }
+    var shareJsonText by remember { mutableStateOf("") }
+    var showImportDialog by remember { mutableStateOf(false) }
+    var importJsonText by remember { mutableStateOf("") }
+
+    val importFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            viewModel.importTimetableFromUri(context, it) { success, msg ->
+                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                if (success) {
+                    showImportDialog = false
+                }
+            }
+        }
+    }
 
     val daysMap = listOf(
         1 to "Mon",
@@ -49,12 +79,31 @@ fun TimetableScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Weekly Timetable", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(
+                        onClick = onNavigateBack,
+                        modifier = Modifier.testTag("timetable_back_btn")
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
                 actions = {
                     IconButton(
-                        onClick = { showAddDialog = true },
-                        modifier = Modifier.testTag("timetable_add_icon")
+                        onClick = {
+                            viewModel.exportTimetable { json ->
+                                shareJsonText = json
+                                showShareDialog = true
+                            }
+                        },
+                        modifier = Modifier.testTag("timetable_share_btn")
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Class")
+                        Icon(Icons.Default.Share, contentDescription = "Share Timetable")
+                    }
+                    IconButton(
+                        onClick = { showImportDialog = true },
+                        modifier = Modifier.testTag("timetable_import_btn")
+                    ) {
+                        Icon(Icons.Default.FileDownload, contentDescription = "Import Timetable")
                     }
                 }
             )
@@ -76,8 +125,9 @@ fun TimetableScreen(
                 .padding(innerPadding)
         ) {
             // Day Selector Row
-            TabRow(
+            ScrollableTabRow(
                 selectedTabIndex = selectedDayOfWeek - 1,
+                edgePadding = 12.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 daysMap.forEach { (dInt, dName) ->
@@ -87,7 +137,9 @@ fun TimetableScreen(
                         text = {
                             Text(
                                 text = dName,
-                                fontWeight = if (selectedDayOfWeek == dInt) FontWeight.Bold else FontWeight.Normal
+                                fontWeight = if (selectedDayOfWeek == dInt) FontWeight.Bold else FontWeight.Normal,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     )
@@ -138,7 +190,7 @@ fun TimetableScreen(
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
                     items(entriesForSelectedDay) { item ->
-                        val subjectColor = Color(item.subject.colorValue.toULong())
+                        val subjectColor = Color(item.subject.colorValue.toInt())
                         val durationMins = DateUtils.calculateDurationMinutes(item.entry.startTime, item.entry.endTime)
 
                         ElevatedCard(
@@ -223,6 +275,119 @@ fun TimetableScreen(
             onDismiss = {
                 showAddDialog = false
                 editingEntry = null
+            }
+        )
+    }
+
+    if (showShareDialog) {
+        AlertDialog(
+            onDismissRequest = { showShareDialog = false },
+            title = { Text("Share Timetable", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Your timetable and associated subjects are packaged into a JSON format. Share this directly or copy the code to send to another device.")
+                    OutlinedTextField(
+                        value = shareJsonText,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Timetable JSON Format") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 180.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val sendIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(Intent.EXTRA_TEXT, shareJsonText)
+                            type = "text/plain"
+                        }
+                        context.startActivity(Intent.createChooser(sendIntent, "Share Timetable JSON"))
+                    }
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Share via App")
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            clipboardManager.setText(AnnotatedString(shareJsonText))
+                            Toast.makeText(context, "Copied JSON code to clipboard!", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Copy")
+                    }
+                    TextButton(onClick = { showShareDialog = false }) {
+                        Text("Close")
+                    }
+                }
+            }
+        )
+    }
+
+    if (showImportDialog) {
+        AlertDialog(
+            onDismissRequest = { showImportDialog = false },
+            title = { Text("Import Timetable", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Import timetable entries and subjects from a JSON file or paste the JSON code below:")
+
+                    Button(
+                        onClick = {
+                            importFileLauncher.launch(arrayOf("application/json", "*/*", "text/plain"))
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.UploadFile, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Pick JSON File")
+                    }
+
+                    HorizontalDivider()
+
+                    OutlinedTextField(
+                        value = importJsonText,
+                        onValueChange = { importJsonText = it },
+                        label = { Text("Paste JSON Code") },
+                        placeholder = { Text("{\"format\":\"ATTENDMATE_TIMETABLE_V1\",...}") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 100.dp, max = 160.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (importJsonText.isBlank()) {
+                            Toast.makeText(context, "Please paste JSON code or pick a file", Toast.LENGTH_SHORT).show()
+                        } else {
+                            viewModel.importTimetable(importJsonText) { success, msg ->
+                                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                if (success) {
+                                    showImportDialog = false
+                                    importJsonText = ""
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    Text("Import Code")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportDialog = false }) {
+                    Text("Cancel")
+                }
             }
         )
     }

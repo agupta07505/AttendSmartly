@@ -1,14 +1,12 @@
 package com.agupta07505.attendmate.ui.components
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -83,7 +81,10 @@ fun EditUnitBottomSheet(
                             fontSize = 15.sp
                         )
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState())
+                        ) {
                             FilterChip(
                                 selected = currentStatus == AttendanceStatus.PRESENT,
                                 onClick = { onUnitStatusChange(unit.id, AttendanceStatus.PRESENT) },
@@ -99,6 +100,15 @@ fun EditUnitBottomSheet(
                                 label = { Text("Absent") },
                                 leadingIcon = if (currentStatus == AttendanceStatus.ABSENT) {
                                     { Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp)) }
+                                } else null
+                            )
+
+                            FilterChip(
+                                selected = currentStatus == AttendanceStatus.BUNKED,
+                                onClick = { onUnitStatusChange(unit.id, AttendanceStatus.BUNKED) },
+                                label = { Text("Bunked") },
+                                leadingIcon = if (currentStatus == AttendanceStatus.BUNKED) {
+                                    { Icon(Icons.Default.DirectionsRun, null, modifier = Modifier.size(16.dp)) }
                                 } else null
                             )
 
@@ -160,12 +170,24 @@ fun EditUnitBottomSheet(
             ) {
                 OutlinedButton(
                     onClick = {
+                        onMarkAllStatus(AttendanceStatus.BUNKED)
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.DirectionsRun, null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Bunked")
+                }
+
+                OutlinedButton(
+                    onClick = {
                         onMarkAllStatus(AttendanceStatus.CANCELLED)
                         onDismiss()
                     },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Class Cancelled")
+                    Text("Cancelled")
                 }
 
                 OutlinedButton(

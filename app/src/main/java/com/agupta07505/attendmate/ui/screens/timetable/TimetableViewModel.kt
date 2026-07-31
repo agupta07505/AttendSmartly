@@ -1,5 +1,7 @@
 package com.agupta07505.attendmate.ui.screens.timetable
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agupta07505.attendmate.data.local.entity.SubjectEntity
@@ -7,6 +9,7 @@ import com.agupta07505.attendmate.data.local.entity.TimetableEntryEntity
 import com.agupta07505.attendmate.data.repository.AttendMateRepository
 import com.agupta07505.attendmate.domain.model.TimetableWithSubject
 import com.agupta07505.attendmate.util.DateUtils
+import com.agupta07505.attendmate.util.ExportImportUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -80,6 +83,32 @@ class TimetableViewModel(
                     )
                     repository.insertTimetableEntry(copy)
                 }
+            }
+        }
+    }
+
+    fun exportTimetable(onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val json = ExportImportUtils.exportTimetableToJson(repository)
+            onResult(json)
+        }
+    }
+
+    fun importTimetable(jsonString: String, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val (success, message) = ExportImportUtils.importTimetableFromJson(jsonString, repository)
+            onResult(success, message)
+        }
+    }
+
+    fun importTimetableFromUri(context: Context, uri: Uri, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val json = ExportImportUtils.readTextFromUri(context, uri)
+            if (json != null) {
+                val (success, message) = ExportImportUtils.importTimetableFromJson(json, repository)
+                onResult(success, message)
+            } else {
+                onResult(false, "Failed to read JSON file.")
             }
         }
     }

@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
+import java.io.IOException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "attendmate_prefs")
@@ -41,7 +43,15 @@ class UserPreferencesRepository(private val context: Context) {
         val NOTIFICATION_VIBRATE = booleanPreferencesKey("notification_vibrate")
     }
 
-    val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data.map { preferences ->
+    val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
         UserPreferences(
             defaultTargetAttendance = preferences[PreferencesKeys.DEFAULT_TARGET_ATTENDANCE] ?: 75.0,
             defaultReminderMinutes = preferences[PreferencesKeys.DEFAULT_REMINDER_MINUTES] ?: 10,

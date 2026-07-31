@@ -64,7 +64,5 @@ val SubjectPalette = listOf(
     Color(0xFFFB8C00), // Orange
     Color(0xFF43A047), // Green
     Color(0xFF3949AB), // Indigo
-    Color(0xFF00ACC1), // Cyan
-    Color(0xFFE53935), // Red
-    Color(0xFF6D4C41)  // Brown
+    Color(0xFF00ACC1)  // Cyan
 )

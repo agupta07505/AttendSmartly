@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.*
@@ -28,7 +29,8 @@ import com.agupta07505.attendmate.util.DateUtils
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AttendanceHistoryScreen(
-    viewModel: HistoryViewModel
+    viewModel: HistoryViewModel,
+    onNavigateBack: () -> Unit = {}
 ) {
     val records by viewModel.historyRecords.collectAsState()
     val subjects by viewModel.subjects.collectAsState()
@@ -40,7 +42,12 @@ fun AttendanceHistoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Attendance History", fontWeight = FontWeight.Bold) }
+                title = { Text("Attendance History", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
             )
         }
     ) { innerPadding ->
@@ -68,7 +75,7 @@ fun AttendanceHistoryScreen(
                             label = { Text("All Statuses") }
                         )
                     }
-                    items(AttendanceStatus.values()) { st ->
+                    items(AttendanceStatus.values().filter { it != AttendanceStatus.UNMARKED }) { st ->
                         FilterChip(
                             selected = selectedStatusFilter == st,
                             onClick = { viewModel.selectStatusFilter(st) },
@@ -137,7 +144,7 @@ fun AttendanceHistoryScreen(
                     contentPadding = PaddingValues(bottom = 32.dp)
                 ) {
                     items(records) { record ->
-                        val subColor = Color(record.subject.colorValue.toULong())
+                        val subColor = Color(record.subject.colorValue.toInt())
 
                         ElevatedCard(
                             modifier = Modifier

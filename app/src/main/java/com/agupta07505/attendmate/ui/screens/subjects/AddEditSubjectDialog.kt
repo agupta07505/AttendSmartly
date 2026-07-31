@@ -3,6 +3,7 @@ package com.agupta07505.attendmate.ui.screens.subjects
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -10,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -17,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.testTag
@@ -26,6 +29,37 @@ import com.agupta07505.attendmate.data.local.entity.SubjectEntity
 import com.agupta07505.attendmate.domain.calculator.AttendanceCalculator
 import com.agupta07505.attendmate.domain.model.SubjectType
 import com.agupta07505.attendmate.ui.theme.SubjectPalette
+
+private fun formatColorToHex(colorVal: Long): String {
+    val argb = colorVal.toInt()
+    val r = (argb shr 16) and 0xFF
+    val g = (argb shr 8) and 0xFF
+    val b = argb and 0xFF
+    return String.format("#%02X%02X%02X", r, g, b)
+}
+
+private fun parseHexToColor(hex: String): Long? {
+    val cleaned = hex.trim().removePrefix("#")
+    return try {
+        when (cleaned.length) {
+            6 -> {
+                val rgb = cleaned.toLong(16)
+                0xFF000000L or rgb
+            }
+            8 -> {
+                cleaned.toLong(16)
+            }
+            else -> null
+        }
+    } catch (e: Exception) {
+        null
+    }
+}
+
+private fun colorFromHue(hue: Float): Color {
+    val hsv = floatArrayOf(hue.coerceIn(0f, 360f), 0.85f, 0.90f)
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +74,13 @@ fun AddEditSubjectDialog(
     var teacherName by remember { mutableStateOf(initialSubject?.teacherName ?: "") }
     var room by remember { mutableStateOf(initialSubject?.room ?: "") }
     var selectedColor by remember { mutableStateOf(initialSubject?.colorValue ?: SubjectPalette.first().toArgb().toLong()) }
+
+    var hexInputText by remember { mutableStateOf(formatColorToHex(selectedColor)) }
+    var currentHue by remember {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(selectedColor.toInt(), hsv)
+        mutableFloatStateOf(hsv[0])
+    }
 
     var durationMinutesText by remember { mutableStateOf((initialSubject?.defaultSessionDurationMinutes ?: 120).toString()) }
     var unitMinutesText by remember { mutableStateOf((initialSubject?.attendanceUnitMinutes ?: 60).toString()) }
@@ -123,32 +164,124 @@ fun AddEditSubjectDialog(
                     }
                 }
 
-                // Color Selection Row
+                // Color Selection Section
                 Text(
                     text = "Subject Color Theme",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     SubjectPalette.forEach { color ->
                         val colorVal = color.toArgb().toLong()
                         val isSelected = selectedColor == colorVal
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(36.dp)
                                 .clip(CircleShape)
                                 .background(color)
                                 .border(
-                                    width = if (isSelected) 3.dp else 0.dp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                                    width = if (isSelected) 3.dp else 1.dp,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                                     shape = CircleShape
                                 )
-                                .clickable { selectedColor = colorVal }
-                        )
+                                .clickable {
+                                    selectedColor = colorVal
+                                    hexInputText = formatColorToHex(colorVal)
+                                    val hsv = FloatArray(3)
+                                    android.graphics.Color.colorToHSV(colorVal.toInt(), hsv)
+                                    currentHue = hsv[0]
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
                     }
+                }
+
+                // Custom Color Selector Bar & Hex Input
+                Text(
+                    text = "Custom Color Selector Bar",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                val rainbowGradient = remember {
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color.Red,
+                            Color.Yellow,
+                            Color.Green,
+                            Color.Cyan,
+                            Color.Blue,
+                            Color.Magenta,
+                            Color.Red
+                        )
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(rainbowGradient)
+                )
+
+                Slider(
+                    value = currentHue,
+                    onValueChange = { newHue ->
+                        currentHue = newHue
+                        val newColor = colorFromHue(newHue)
+                        val colorVal = newColor.toArgb().toLong()
+                        selectedColor = colorVal
+                        hexInputText = formatColorToHex(colorVal)
+                    },
+                    valueRange = 0f..360f,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(Color(selectedColor.toInt()))
+                            .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                    )
+
+                    OutlinedTextField(
+                        value = hexInputText,
+                        onValueChange = { newText ->
+                            hexInputText = newText
+                            val parsed = parseHexToColor(newText)
+                            if (parsed != null) {
+                                selectedColor = parsed
+                                val hsv = FloatArray(3)
+                                android.graphics.Color.colorToHSV(parsed.toInt(), hsv)
+                                currentHue = hsv[0]
+                            }
+                        },
+                        label = { Text("Custom Color (HEX Code)") },
+                        placeholder = { Text("#1E88E5") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
 
                 // Teacher & Room

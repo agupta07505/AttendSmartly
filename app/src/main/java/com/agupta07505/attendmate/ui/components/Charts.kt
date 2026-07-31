@@ -24,9 +24,10 @@ fun AttendanceDonutChart(
     presentUnits: Int,
     absentUnits: Int,
     cancelledUnits: Int,
+    bunkedUnits: Int = 0,
     modifier: Modifier = Modifier.size(160.dp)
 ) {
-    val total = (presentUnits + absentUnits + cancelledUnits).toFloat()
+    val total = (presentUnits + absentUnits + bunkedUnits + cancelledUnits).toFloat()
 
     Box(
         modifier = modifier,
@@ -50,6 +51,7 @@ fun AttendanceDonutChart(
             } else {
                 val presentSweep = (presentUnits / total) * 360f
                 val absentSweep = (absentUnits / total) * 360f
+                val bunkedSweep = (bunkedUnits / total) * 360f
                 val cancelledSweep = (cancelledUnits / total) * 360f
 
                 var startAngle = -90f
@@ -80,6 +82,19 @@ fun AttendanceDonutChart(
                     startAngle += absentSweep
                 }
 
+                if (bunkedSweep > 0) {
+                    drawArc(
+                        color = Color(0xFFFF9800), // Bunked Amber/Orange
+                        startAngle = startAngle,
+                        sweepAngle = bunkedSweep,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = strokeWidth)
+                    )
+                    startAngle += bunkedSweep
+                }
+
                 if (cancelledSweep > 0) {
                     drawArc(
                         color = StatusCancelled,
@@ -94,7 +109,7 @@ fun AttendanceDonutChart(
             }
         }
 
-        val conducted = presentUnits + absentUnits
+        val conducted = presentUnits + absentUnits + bunkedUnits
         val percentage = if (conducted > 0) (presentUnits.toDouble() / conducted * 100) else 0.0
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

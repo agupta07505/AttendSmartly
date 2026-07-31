@@ -5,10 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.HourglassEmpty
-import androidx.compose.material.icons.filled.RemoveCircle
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,6 +31,7 @@ fun UnitBadgeChip(
     val (bgColor, textColor, icon) = when (status) {
         AttendanceStatus.PRESENT -> Triple(StatusPresent.copy(alpha = 0.15f), StatusPresent, Icons.Default.CheckCircle)
         AttendanceStatus.ABSENT -> Triple(StatusAbsent.copy(alpha = 0.15f), StatusAbsent, Icons.Default.RemoveCircle)
+        AttendanceStatus.BUNKED -> Triple(StatusAbsent.copy(alpha = 0.25f), StatusAbsent, Icons.Default.DirectionsRun)
         AttendanceStatus.CANCELLED -> Triple(StatusCancelled.copy(alpha = 0.15f), StatusCancelled, Icons.Default.Cancel)
         AttendanceStatus.UNMARKED -> Triple(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, Icons.Default.HourglassEmpty)
     }

@@ -57,7 +57,7 @@ fun SubjectDetailScreen(
             }
         } else {
             val sub = subject!!
-            val subjectColor = Color(sub.colorValue.toULong())
+            val subjectColor = Color(sub.colorValue.toInt())
 
             LazyColumn(
                 modifier = Modifier

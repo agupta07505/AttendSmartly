@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,8 +28,11 @@ import com.agupta07505.attendmate.ui.components.ClassCard
 import com.agupta07505.attendmate.ui.components.EditUnitBottomSheet
 import com.agupta07505.attendmate.util.DateUtils
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -49,6 +53,7 @@ fun HomeScreen(
 
     var activeSheetItem by remember { mutableStateOf<ClassScheduleItem?>(null) }
     var showFabMenu by remember { mutableStateOf(false) }
+    var showDatePickerDialog by remember { mutableStateOf(false) }
 
     val greeting = remember {
         val hour = LocalTime.now().hour
@@ -82,6 +87,12 @@ fun HomeScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { showDatePickerDialog = true },
+                        modifier = Modifier.testTag("date_picker_icon_btn")
+                    ) {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = "Pick Date")
+                    }
                     IconButton(
                         onClick = onNavigateToSettings,
                         modifier = Modifier.testTag("settings_icon_btn")
@@ -138,12 +149,22 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Horizontal Date Selector (-3 days to +7 days)
-            val dates = remember {
-                (-3..7).map { LocalDate.now().plusDays(it.toLong()) }
+            // Horizontal Date Selector (Wide Range: -30 days to +14 days relative to selectedDate/today)
+            val dates = remember(selectedDateIso) {
+                val base = selectedDate.minusDays(20)
+                (0..35).map { base.plusDays(it.toLong()) }
+            }
+            val dateRowState = rememberLazyListState()
+
+            LaunchedEffect(selectedDateIso) {
+                val index = dates.indexOfFirst { it.format(DateUtils.isoDateFormatter) == selectedDateIso }
+                if (index >= 0) {
+                    dateRowState.animateScrollToItem((index - 2).coerceAtLeast(0))
+                }
             }
 
             LazyRow(
+                state = dateRowState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
@@ -210,7 +231,7 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Today's Classes",
+                            text = if (selectedDate == LocalDate.now()) "Today's Classes" else "Classes on ${DateUtils.formatDateToHuman(selectedDateIso)}",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -247,12 +268,12 @@ fun HomeScreen(
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    text = "No Classes Scheduled Today",
+                                    text = "No Classes Scheduled",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "Enjoy your day off or tap the '+' button to add subjects and build your timetable.",
+                                    text = "No classes found for this date. Tap '+' to add entries to your timetable or select another date above.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -268,27 +289,18 @@ fun HomeScreen(
                             units = item.units,
                             onMarkPresent = {
                                 viewModel.markPresent(item)
-                                scope.launch {
-                                    val result = snackbarHostState.showSnackbar(
-                                        message = "Marked ${item.subject.name} Present",
-                                        actionLabel = "Undo"
-                                    )
-                                    if (result == SnackbarResult.ActionPerformed) {
-                                        viewModel.undoLastAction()
-                                    }
-                                }
                             },
                             onMarkAbsent = {
                                 viewModel.markAbsent(item)
-                                scope.launch {
-                                    val result = snackbarHostState.showSnackbar(
-                                        message = "Marked ${item.subject.name} Absent",
-                                        actionLabel = "Undo"
-                                    )
-                                    if (result == SnackbarResult.ActionPerformed) {
-                                        viewModel.undoLastAction()
-                                    }
-                                }
+                            },
+                            onMarkBunked = {
+                                viewModel.markBunked(item)
+                            },
+                            onMarkCancelled = {
+                                viewModel.markCancelled(item)
+                            },
+                            onResetSession = {
+                                viewModel.resetSession(item)
                             },
                             onMoreOptions = {
                                 activeSheetItem = item
@@ -297,6 +309,43 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+    }
+
+    // Material 3 Date Picker Dialog
+    if (showDatePickerDialog) {
+        val initialMillis = remember(selectedDate) {
+            selectedDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        }
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = initialMillis
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val selectedMillis = datePickerState.selectedDateMillis
+                        if (selectedMillis != null) {
+                            val pickedLocalDate = Instant.ofEpochMilli(selectedMillis)
+                                .atZone(ZoneId.of("UTC"))
+                                .toLocalDate()
+                            viewModel.selectDate(pickedLocalDate.format(DateUtils.isoDateFormatter))
+                        }
+                        showDatePickerDialog = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 

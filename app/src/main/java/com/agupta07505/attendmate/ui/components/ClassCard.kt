@@ -33,16 +33,31 @@ fun ClassCard(
     units: List<AttendanceUnitEntity>,
     onMarkPresent: () -> Unit,
     onMarkAbsent: () -> Unit,
+    onMarkBunked: () -> Unit = {},
+    onMarkCancelled: () -> Unit = {},
+    onResetSession: () -> Unit = {},
     onMoreOptions: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val subjectColor = Color(subject.colorValue.toULong())
+    val subjectColor = Color(subject.colorValue.toInt())
     val durationMins = DateUtils.calculateDurationMinutes(timetableEntry.startTime, timetableEntry.endTime)
     val expectedUnits = timetableEntry.attendanceUnitCount
 
     val presentCount = units.count { it.status == AttendanceStatus.PRESENT.name }
+    val absentCount = units.count { it.status == AttendanceStatus.ABSENT.name }
+    val bunkedCount = units.count { it.status == AttendanceStatus.BUNKED.name }
+    val cancelledCount = units.count { it.status == AttendanceStatus.CANCELLED.name }
     val markedCount = units.count { it.status != AttendanceStatus.UNMARKED.name }
-    val allMarked = units.isNotEmpty() && markedCount >= expectedUnits
+    val isMarked = markedCount > 0
+
+    val primaryStatusStr = when {
+        presentCount == expectedUnits -> "Present"
+        absentCount == expectedUnits -> "Absent"
+        bunkedCount == expectedUnits -> "Bunked"
+        cancelledCount == expectedUnits -> "Cancelled"
+        markedCount > 0 -> "Partial ($presentCount/$expectedUnits)"
+        else -> "Unmarked"
+    }
 
     val formattedStartTime = DateUtils.formatTime(timetableEntry.startTime)
     val formattedEndTime = DateUtils.formatTime(timetableEntry.endTime)
@@ -117,19 +132,6 @@ fun ClassCard(
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
-
-                IconButton(
-                    onClick = onMoreOptions,
-                    modifier = Modifier
-                        .size(32.dp)
-                        .testTag("class_more_button_${timetableEntry.id}")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "More Options",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
             }
 
             // Unit Progress & Segmented Bar
@@ -154,6 +156,7 @@ fun ClassCard(
                                 val pillColor = when (status) {
                                     AttendanceStatus.PRESENT -> com.agupta07505.attendmate.ui.theme.StatusPresent
                                     AttendanceStatus.ABSENT -> com.agupta07505.attendmate.ui.theme.StatusAbsent
+                                    AttendanceStatus.BUNKED -> com.agupta07505.attendmate.ui.theme.StatusAbsent
                                     AttendanceStatus.CANCELLED -> com.agupta07505.attendmate.ui.theme.StatusCancelled
                                     AttendanceStatus.UNMARKED -> MaterialTheme.colorScheme.outlineVariant
                                 }
@@ -168,7 +171,7 @@ fun ClassCard(
                         }
                     }
                     Text(
-                        text = "$markedCount/$expectedUnits marked",
+                        text = "$markedCount/$expectedUnits marked ($primaryStatusStr)",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -180,7 +183,7 @@ fun ClassCard(
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Text(
-                        text = "Details",
+                        text = "Edit Units",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -188,61 +191,108 @@ fun ClassCard(
                 }
             }
 
-            // Action Buttons Row: Present & Absent
-            Row(
+            // Quick Status Actions Grid: Present, Absent, Bunked, Cancelled + Reset
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(
-                    onClick = onMarkPresent,
-                    enabled = !allMarked,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp)
-                        .testTag("btn_present_${timetableEntry.id}"),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    shape = RoundedCornerShape(16.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "Present",
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Present",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.labelLarge
-                    )
+                    // Present
+                    Button(
+                        onClick = onMarkPresent,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .testTag("btn_present_${timetableEntry.id}"),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (presentCount == expectedUnits) com.agupta07505.attendmate.ui.theme.StatusPresent else MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = if (presentCount == expectedUnits) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Present", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    // Absent
+                    Button(
+                        onClick = onMarkAbsent,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .testTag("btn_absent_${timetableEntry.id}"),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (absentCount == expectedUnits) com.agupta07505.attendmate.ui.theme.StatusAbsent else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (absentCount == expectedUnits) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
+                    ) {
+                        Icon(Icons.Default.Cancel, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Absent", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    // Bunked
+                    Button(
+                        onClick = onMarkBunked,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .testTag("btn_bunked_${timetableEntry.id}"),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (bunkedCount == expectedUnits) com.agupta07505.attendmate.ui.theme.StatusAbsent.copy(alpha = 0.8f) else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (bunkedCount == expectedUnits) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
+                    ) {
+                        Icon(Icons.Default.DirectionsRun, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Bunked", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    // Cancelled
+                    Button(
+                        onClick = onMarkCancelled,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .testTag("btn_cancelled_${timetableEntry.id}"),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (cancelledCount == expectedUnits) com.agupta07505.attendmate.ui.theme.StatusCancelled else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (cancelledCount == expectedUnits) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
+                    ) {
+                        Icon(Icons.Default.Block, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Cancelled", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
 
-                OutlinedButton(
-                    onClick = onMarkAbsent,
-                    enabled = !allMarked,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp)
-                        .testTag("btn_absent_${timetableEntry.id}"),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Cancel,
-                        contentDescription = "Absent",
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Absent",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.labelLarge
-                    )
+                if (isMarked) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(
+                            onClick = onResetSession,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Reset Status", modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Reset / Clear", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 }
             }
         }

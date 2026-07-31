@@ -15,7 +15,7 @@ class AttendanceCalculatorTest {
         assertEquals(0, summary.presentUnits)
         assertEquals(0.0, summary.percentage, 0.01)
         assertEquals(0, summary.safeBunks)
-        assertEquals(0, summary.consecutiveRequired)
+        assertEquals(0, summary.requiredUnitsToTarget)
     }
 
     @Test
@@ -55,7 +55,7 @@ class AttendanceCalculatorTest {
         assertEquals(5, summary.presentUnits)
         assertEquals(50.0, summary.percentage, 0.01)
         // Required formula: ceil((0.75 * 10 - 5) / (1 - 0.75)) = ceil((7.5 - 5) / 0.25) = ceil(2.5 / 0.25) = 10 classes
-        assertEquals(10, summary.consecutiveRequired)
+        assertEquals(10, summary.requiredUnitsToTarget)
     }
 
     @Test
