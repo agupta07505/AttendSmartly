@@ -9,6 +9,7 @@ import com.agupta07505.attendmate.domain.model.AttendanceStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import com.agupta07505.attendmate.util.DateUtils
 import java.time.DayOfWeek
 import java.time.LocalDate
 
@@ -76,7 +77,7 @@ class AttendMateRepository(
                 subject.id
             } else {
                 val newColor = colors[existingSubjects.size % colors.size]
-                val displayName = if (normCode.isNotBlank()) normCode else normName
+                val displayName = if (normName.isNotBlank()) normName else normCode
                 val displayCode = if (normCode.isNotBlank()) normCode else ""
                 val newSub = SubjectEntity(
                     name = displayName,
@@ -86,7 +87,7 @@ class AttendMateRepository(
                     room = item.roomLocation,
                     colorValue = newColor,
                     iconName = if (item.isPractical) "Science" else "Book",
-                    notes = if (normName.isNotBlank() && normName != displayName) "Full Name: $normName" else ""
+                    notes = if (normCode.isNotBlank() && normCode != displayName) "Code: $normCode" else ""
                 )
                 val newId = subjectDao.insertSubject(newSub)
                 val createdSubject = newSub.copy(id = newId)
@@ -219,5 +220,99 @@ class AttendMateRepository(
         for (t in tts) timetableDao.deleteEntryById(t.id)
         val sesss = allSessions.first()
         for (se in sesss) attendanceDao.deleteSessionById(se.id)
+    }
+
+    suspend fun markPastAttendanceForSubject(
+        subjectId: Long,
+        attendedCount: Int
+    ): Pair<Boolean, String> {
+        if (attendedCount <= 0) {
+            return Pair(false, "Please enter a valid count greater than 0.")
+        }
+
+        val allEntries = timetableDao.getEntriesForSubject(subjectId).first()
+        if (allEntries.isEmpty()) {
+            return Pair(false, "No timetable schedule entries found for this subject. Please add timetable entries first.")
+        }
+
+        val holidays = holidayDao.getAllHolidays().first()
+        val today = LocalDate.now()
+        var currentDate = today.minusDays(1) // EXCLUDING CURRENT DATE (TODAY)
+
+        var remainingToMark = attendedCount
+        var sessionsCreatedOrUpdated = 0
+        var unitsMarkedPresent = 0
+
+        var daysChecked = 0
+        val maxDays = 365
+
+        while (remainingToMark > 0 && daysChecked < maxDays) {
+            val dateStr = currentDate.format(DateUtils.isoDateFormatter)
+
+            val isHoliday = holidays.any { it.date == dateStr }
+            if (!isHoliday) {
+                val dayOfWeek = currentDate.dayOfWeek.value // 1=Mon, 7=Sun
+                val dayEntries = allEntries.filter { it.dayOfWeek == dayOfWeek }
+                    .sortedByDescending { it.startTime } // fill latest past entries first
+
+                if (dayEntries.isNotEmpty()) {
+                    for (entry in dayEntries) {
+                        if (remainingToMark <= 0) break
+
+                        val unitsToMarkForThisEntry = minOf(entry.attendanceUnitCount, remainingToMark)
+
+                        var session = attendanceDao.getSessionForTimetableAndDate(entry.id, dateStr)
+                        val sessionId = if (session != null) {
+                            session.id
+                        } else {
+                            val newSession = AttendanceSessionEntity(
+                                subjectId = subjectId,
+                                timetableEntryId = entry.id,
+                                sessionDate = dateStr,
+                                startTime = entry.startTime,
+                                endTime = entry.endTime,
+                                expectedUnitCount = entry.attendanceUnitCount
+                            )
+                            attendanceDao.insertSession(newSession)
+                        }
+
+                        val existingUnits = attendanceDao.getUnitsForSession(sessionId)
+                        val newUnits = mutableListOf<AttendanceUnitEntity>()
+
+                        for (uIdx in 0 until entry.attendanceUnitCount) {
+                            val existingUnit = existingUnits.find { it.unitIndex == uIdx }
+                            val status = if (uIdx < unitsToMarkForThisEntry) {
+                                AttendanceStatus.PRESENT.name
+                            } else {
+                                existingUnit?.status ?: AttendanceStatus.UNMARKED.name
+                            }
+
+                            newUnits.add(
+                                AttendanceUnitEntity(
+                                    id = existingUnit?.id ?: 0,
+                                    sessionId = sessionId,
+                                    unitIndex = uIdx,
+                                    status = status,
+                                    updatedAt = System.currentTimeMillis()
+                                )
+                            )
+                        }
+
+                        attendanceDao.insertUnits(newUnits)
+                        remainingToMark -= unitsToMarkForThisEntry
+                        unitsMarkedPresent += unitsToMarkForThisEntry
+                        sessionsCreatedOrUpdated++
+                    }
+                }
+            }
+
+            currentDate = currentDate.minusDays(1)
+            daysChecked++
+        }
+
+        return Pair(
+            true,
+            "Successfully marked $unitsMarkedPresent class unit(s) as Present across $sessionsCreatedOrUpdated past session(s) (Excluding today)."
+        )
     }
 }

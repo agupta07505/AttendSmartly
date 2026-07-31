@@ -49,11 +49,13 @@ fun TimetableScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingEntry by remember { mutableStateOf<TimetableEntryEntity?>(null) }
     var showOcrDialog by remember { mutableStateOf(false) }
+    var showMarkPastDialog by remember { mutableStateOf(false) }
 
     var showShareDialog by remember { mutableStateOf(false) }
     var shareJsonText by remember { mutableStateOf("") }
     var showImportDialog by remember { mutableStateOf(false) }
     var importJsonText by remember { mutableStateOf("") }
+    var isFabMenuExpanded by remember { mutableStateOf(false) }
 
     val importFileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -89,54 +91,105 @@ fun TimetableScreen(
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { showOcrDialog = true },
-                        modifier = Modifier.testTag("timetable_ai_scan_btn")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = "Scan AI Timetable",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    IconButton(
+                }
+            )
+        },
+        floatingActionButton = {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (isFabMenuExpanded) {
+                    // Option 1: Add Class Manually
+                    ExtendedFloatingActionButton(
                         onClick = {
+                            isFabMenuExpanded = false
+                            showAddDialog = true
+                        },
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                        text = { Text("Add Class Manually", fontWeight = FontWeight.SemiBold) },
+                        modifier = Modifier.testTag("timetable_fab_add_manual")
+                    )
+
+                    // Option 2: AI Timetable Scan
+                    ExtendedFloatingActionButton(
+                        onClick = {
+                            isFabMenuExpanded = false
+                            showOcrDialog = true
+                        },
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                        icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
+                        text = { Text("AI Timetable Scan", fontWeight = FontWeight.SemiBold) },
+                        modifier = Modifier.testTag("timetable_ai_scan_btn")
+                    )
+
+                    // Option 3: Mark Past Attendance
+                    ExtendedFloatingActionButton(
+                        onClick = {
+                            isFabMenuExpanded = false
+                            showMarkPastDialog = true
+                        },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        icon = { Icon(Icons.Default.EventAvailable, contentDescription = null) },
+                        text = { Text("Mark Past Attendance", fontWeight = FontWeight.SemiBold) },
+                        modifier = Modifier.testTag("timetable_mark_past_btn")
+                    )
+
+                    // Option 4: Share Timetable
+                    ExtendedFloatingActionButton(
+                        onClick = {
+                            isFabMenuExpanded = false
                             viewModel.exportTimetable { json ->
                                 shareJsonText = json
                                 showShareDialog = true
                             }
                         },
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        icon = { Icon(Icons.Default.Share, contentDescription = null) },
+                        text = { Text("Share Timetable", fontWeight = FontWeight.SemiBold) },
                         modifier = Modifier.testTag("timetable_share_btn")
-                    ) {
-                        Icon(Icons.Default.Share, contentDescription = "Share Timetable")
-                    }
-                    IconButton(
-                        onClick = { showImportDialog = true },
+                    )
+
+                    // Option 5: Import Timetable
+                    ExtendedFloatingActionButton(
+                        onClick = {
+                            isFabMenuExpanded = false
+                            showImportDialog = true
+                        },
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        icon = { Icon(Icons.Default.FileDownload, contentDescription = null) },
+                        text = { Text("Import Timetable", fontWeight = FontWeight.SemiBold) },
                         modifier = Modifier.testTag("timetable_import_btn")
-                    ) {
-                        Icon(Icons.Default.FileDownload, contentDescription = "Import Timetable")
-                    }
+                    )
                 }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.testTag("timetable_fab_add")
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Class")
+
+                // Main Plus FAB
+                FloatingActionButton(
+                    onClick = { isFabMenuExpanded = !isFabMenuExpanded },
+                    containerColor = if (isFabMenuExpanded) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primary,
+                    contentColor = if (isFabMenuExpanded) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.testTag("timetable_fab_add")
+                ) {
+                    Icon(
+                        imageVector = if (isFabMenuExpanded) Icons.Default.Close else Icons.Default.Add,
+                        contentDescription = if (isFabMenuExpanded) "Close timetable menu" else "Open timetable menu"
+                    )
+                }
             }
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            Column(modifier = Modifier.fillMaxSize()) {
             // Day Selector Row
             ScrollableTabRow(
                 selectedTabIndex = selectedDayOfWeek - 1,
@@ -227,6 +280,56 @@ fun TimetableScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showMarkPastDialog = true }
+                                .testTag("timetable_mark_past_banner"),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.EventAvailable,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Column {
+                                        Text(
+                                            text = "Mark Past Attendance",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "Auto-fill classes by subject (Excluding current date)",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
                     items(entriesForSelectedDay) { item ->
                         val subjectColor = Color(item.subject.colorValue.toInt())
                         val durationMins = DateUtils.calculateDurationMinutes(item.entry.startTime, item.entry.endTime)
@@ -292,6 +395,15 @@ fun TimetableScreen(
                         }
                     }
                 }
+            }
+
+            if (isFabMenuExpanded) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.35f))
+                        .clickable { isFabMenuExpanded = false }
+                )
             }
         }
     }
@@ -444,4 +556,15 @@ fun TimetableScreen(
             }
         )
     }
+
+    if (showMarkPastDialog) {
+        MarkPastAttendanceDialog(
+            subjects = activeSubjects,
+            onMarkPast = { subjectId, count, onResult ->
+                viewModel.markPastAttendance(subjectId, count, onResult)
+            },
+            onDismiss = { showMarkPastDialog = false }
+        )
+    }
+}
 }

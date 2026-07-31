@@ -634,8 +634,8 @@ private fun PreviewStep(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    val primaryTitle = item.subjectCode.ifBlank { item.subjectName }
-                                    val secondaryTitle = if (item.subjectCode.isNotBlank() && !item.subjectName.equals(item.subjectCode, ignoreCase = true)) item.subjectName else ""
+                                    val primaryTitle = item.subjectName.ifBlank { item.subjectCode }
+                                    val secondaryTitle = if (item.subjectCode.isNotBlank() && !item.subjectName.equals(item.subjectCode, ignoreCase = true)) item.subjectCode else ""
 
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
@@ -892,7 +892,7 @@ private fun EditParsedItemDialog(
                 OutlinedTextField(
                     value = subjectName,
                     onValueChange = { subjectName = it },
-                    label = { Text("Subject Name") },
+                    label = { Text("Subject (e.g., DAA, DSA, DBMS)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -900,7 +900,7 @@ private fun EditParsedItemDialog(
                 OutlinedTextField(
                     value = subjectCode,
                     onValueChange = { subjectCode = it },
-                    label = { Text("Subject Code / Acronym (Optional)") },
+                    label = { Text("Subject Code (e.g., CSE-3001) [Optional]") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )

@@ -25,11 +25,20 @@ class TimetableOcrService {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    // Candidate Gemini model names in order of preference
-    private val candidateModels = listOf(
+    // Default candidate Gemini model names in order of preference as fallbacks
+    private val defaultCandidateModels = listOf(
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-flash-lite",
         "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.5-pro",
         "gemini-1.5-flash",
+        "gemini-1.5-flash-8b",
+        "gemini-1.5-pro",
         "gemini-2.0-flash",
+        "gemini-2.0-flash-lite-preview-02-05",
         "gemini-flash-latest"
     )
 
@@ -38,7 +47,7 @@ class TimetableOcrService {
         isSampleImage: Boolean = false,
         customApiKey: String? = null
     ): List<ParsedTimetableItem> = withContext(Dispatchers.IO) {
-        val apiKey = customApiKey?.trim() ?: ""
+        val apiKey = (customApiKey ?: "").trim().removeSurrounding("\"", "\"").removeSurrounding("'", "'").trim()
         val isApiKeyValid = apiKey.isNotEmpty()
 
         if (isSampleImage && !isApiKeyValid) {
@@ -47,8 +56,12 @@ class TimetableOcrService {
         }
 
         if (!isApiKeyValid) {
-            throw IllegalStateException("Gemini API Key is required for scanning timetables. Please enter your Gemini API Key in Settings or in the Timetable Scanner dialog.")
+            throw IllegalStateException("Gemini API key is required for AI timetable scanning. Please enter your Gemini API key in Settings or in the Scanner dialog.")
         }
+
+        // Dynamically fetch models available for this API key from Gemini REST API
+        val discoveredModels = fetchDiscoveredModels(apiKey)
+        val modelsToTry = (discoveredModels + defaultCandidateModels).distinct()
 
         val resizedBitmap = resizeBitmapIfNeeded(bitmap, maxDimension = 1280)
         val base64Image = bitmapToBase64(resizedBitmap)
@@ -62,8 +75,12 @@ class TimetableOcrService {
             1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday, 7 = Sunday.
 
             For each class/entry extract:
-            - subjectName: Full clean subject name (e.g., "Database Management System", "Data Structures", "Physics Lab")
-            - subjectCode: Short subject code, course code, or acronym if available or recognizable (e.g., "DBMS" for Database Management System, "DSA" for Data Structures, "CS201", "PHY101"). If full subject name is long, generate a standard short uppercase acronym (e.g., "DBMS", "OS", "CN").
+            - subjectName: Primary subject identifier. STRICT ORDER OF PRIORITY:
+              1. FIRST PRIORITY: Short subject name, abbreviation, or short acronym as written in or derived from the timetable (e.g., "DAA", "DSA", "OOPS", "SCS", "OS", "CN", "DBMS", "SE", "AI", "ML", "TOC", "CD", "Maths"). ALWAYS PREFER SHORT SUBJECT NAMES (e.g. use "DAA" instead of course code or full name).
+              2. SECOND PRIORITY: Full subject name if no short name or acronym is present (e.g. "Design and Analysis of Algorithms", "Database Systems").
+              3. THIRD PRIORITY: Subject or course code if neither short name nor full name is written (e.g. "CSE-3001").
+              4. FOURTH PRIORITY: Relevant subject description based on slot context if nothing else is available.
+            - subjectCode: Course code or subject catalog number if present (e.g., "CSE-3001", "CS201", "3001"). If subjectName is already "DAA", put "CSE-3001" here if present, else empty string "".
             - teacherName: Teacher, professor, instructor name or initials if present (e.g., "Dr. Smith", "Prof. Sharma", "AK"), else empty string "".
             - startTime: Time in HH:mm 24-hour format (e.g., "09:00", "14:30")
             - endTime: Time in HH:mm 24-hour format (e.g., "10:00", "16:00")
@@ -75,8 +92,8 @@ class TimetableOcrService {
             {
               "schedules": [
                 {
-                  "subjectName": "Database Management System",
-                  "subjectCode": "DBMS",
+                  "subjectName": "DAA",
+                  "subjectCode": "CSE-3001",
                   "teacherName": "Dr. Smith",
                   "startTime": "09:00",
                   "endTime": "10:00",
@@ -110,7 +127,7 @@ class TimetableOcrService {
         )
 
         var lastError: Exception? = null
-        for (modelName in candidateModels) {
+        for (modelName in modelsToTry) {
             try {
                 val requestUrl = "https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$apiKey"
                 val request = Request.Builder()
@@ -122,6 +139,11 @@ class TimetableOcrService {
                 val responseBodyString = response.body?.string() ?: ""
 
                 if (!response.isSuccessful) {
+                    if (responseBodyString.contains("API_KEY_INVALID", ignoreCase = true) ||
+                        responseBodyString.contains("API key not valid", ignoreCase = true) ||
+                        responseBodyString.contains("keyInvalid", ignoreCase = true)) {
+                        throw IllegalArgumentException("The Gemini API key provided is invalid. Please double check your API key in Settings.")
+                    }
                     lastError = RuntimeException("Model $modelName status ${response.code}: $responseBodyString")
                     continue
                 }
@@ -158,6 +180,8 @@ class TimetableOcrService {
                 if (mergedAndProcessed.isNotEmpty()) {
                     return@withContext mergedAndProcessed
                 }
+            } catch (e: IllegalArgumentException) {
+                throw e
             } catch (e: Exception) {
                 lastError = e
             }
@@ -167,7 +191,14 @@ class TimetableOcrService {
             return@withContext getSampleTimetableItems()
         }
 
-        val errorDetails = lastError?.localizedMessage ?: "Network or API request failed"
+        val rawMsg = lastError?.message ?: "Network or API request failed"
+        val errorDetails = when {
+            rawMsg.contains("API_KEY_INVALID", ignoreCase = true) || rawMsg.contains("keyNotValid", ignoreCase = true) ->
+                "Invalid Gemini API key. Please re-enter a valid key from Google AI Studio."
+            rawMsg.contains("RESOURCE_EXHAUSTED", ignoreCase = true) || rawMsg.contains("429") ->
+                "Gemini API rate limit exceeded. Please wait a moment and try again."
+            else -> rawMsg
+        }
         throw RuntimeException("Timetable detection failed: $errorDetails")
     }
 
@@ -329,7 +360,56 @@ class TimetableOcrService {
         if (text.endsWith("```")) {
             text = text.removeSuffix("```")
         }
+        text = text.trim()
+
+        val firstBrace = text.indexOf('{')
+        val lastBrace = text.lastIndexOf('}')
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+            text = text.substring(firstBrace, lastBrace + 1)
+        }
         return text.trim()
+    }
+
+    private fun fetchDiscoveredModels(apiKey: String): List<String> {
+        return try {
+            val url = "https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey"
+            val request = Request.Builder().url(url).get().build()
+            val response = okHttpClient.newCall(request).execute()
+            val bodyStr = response.body?.string() ?: ""
+            if (!response.isSuccessful || bodyStr.isBlank()) {
+                return emptyList()
+            }
+            val listResp = gson.fromJson(bodyStr, GeminiModelListResponse::class.java)
+            val models = listResp.models
+                ?.filter { it.supportedGenerationMethods?.contains("generateContent") == true }
+                ?.mapNotNull { it.name?.removePrefix("models/")?.trim() }
+                ?.filter { it.isNotBlank() } ?: emptyList()
+
+            models.sortedWith(Comparator { m1, m2 ->
+                modelPriorityScore(m2) - modelPriorityScore(m1)
+            })
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun modelPriorityScore(modelName: String): Int {
+        val m = modelName.lowercase()
+        return when {
+            m.contains("3.6-flash") -> 100
+            m.contains("3.5-flash-lite") -> 95
+            m.contains("3.5-flash") -> 90
+            m.contains("3.1-flash-lite") -> 85
+            m.contains("2.5-flash-lite") -> 82
+            m.contains("2.5-flash") -> 80
+            m.contains("2.5-pro") -> 75
+            m.contains("1.5-flash") -> 70
+            m.contains("1.5-pro") -> 65
+            m.contains("2.0-flash") -> 60
+            m.contains("flash") -> 50
+            m.contains("pro") -> 40
+            else -> 10
+        }
     }
 
     private fun formatTime(raw: String): String {
@@ -399,3 +479,13 @@ private data class RawExtractedItem(
     val dayOfWeek: Int?,
     val isPractical: Boolean?
 )
+
+private data class GeminiModelListResponse(
+    val models: List<GeminiModelInfo>? = null
+)
+
+private data class GeminiModelInfo(
+    val name: String? = null,
+    val supportedGenerationMethods: List<String>? = null
+)
+

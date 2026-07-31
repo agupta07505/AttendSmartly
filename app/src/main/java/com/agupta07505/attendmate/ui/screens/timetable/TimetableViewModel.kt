@@ -191,4 +191,11 @@ class TimetableViewModel(
             }
         }
     }
+
+    fun markPastAttendance(subjectId: Long, attendedCount: Int, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val (success, message) = repository.markPastAttendanceForSubject(subjectId, attendedCount)
+            onResult(success, message)
+        }
+    }
 }

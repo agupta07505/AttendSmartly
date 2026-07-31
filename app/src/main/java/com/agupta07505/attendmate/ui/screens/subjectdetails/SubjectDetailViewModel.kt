@@ -67,4 +67,11 @@ class SubjectDetailViewModel(
             repository.deleteSession(sessionId)
         }
     }
+
+    fun markPastAttendance(count: Int, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val (success, message) = repository.markPastAttendanceForSubject(subjectId, count)
+            onResult(success, message)
+        }
+    }
 }

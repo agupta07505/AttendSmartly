@@ -1,20 +1,26 @@
 package com.agupta07505.attendmate.ui.screens.subjectdetails
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.attendmate.domain.model.AttendanceStatus
@@ -34,7 +40,11 @@ fun SubjectDetailScreen(
     val summary by viewModel.summary.collectAsState()
     val sessions by viewModel.subjectSessions.collectAsState()
 
+    val context = LocalContext.current
     var activeEditingSession by remember { mutableStateOf<SessionWithUnits?>(null) }
+    var showMarkPastDialog by remember { mutableStateOf(false) }
+    var pastClassesInput by remember { mutableStateOf("") }
+    var isProcessingPast by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -43,6 +53,15 @@ fun SubjectDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showMarkPastDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.EventAvailable,
+                            contentDescription = "Mark Past Attendance",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             )
@@ -162,6 +181,43 @@ fun SubjectDetailScreen(
                     }
                 }
 
+                // Quick Action: Mark Past Attendance
+                item {
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Mark Past Attendance",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Auto-fill attended classes for past dates (Excludes today)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Button(
+                                onClick = { showMarkPastDialog = true },
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Mark")
+                            }
+                        }
+                    }
+                }
+
                 item {
                     Text(
                         text = "Attendance History",
@@ -257,6 +313,112 @@ fun SubjectDetailScreen(
                 viewModel.resetSession(item.session.id)
             },
             onDismiss = { activeEditingSession = null }
+        )
+    }
+
+    if (showMarkPastDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isProcessingPast) {
+                    showMarkPastDialog = false
+                    pastClassesInput = ""
+                }
+            },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.EventAvailable,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text("Mark Past Attendance", fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Auto-fills past classes as Present based on your timetable schedule, working backward from yesterday (Excludes today).",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = pastClassesInput,
+                        onValueChange = { input ->
+                            if (input.all { it.isDigit() }) {
+                                pastClassesInput = input
+                            }
+                        },
+                        label = { Text("Classes Already Attended") },
+                        placeholder = { Text("e.g. 12") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val count = pastClassesInput.toIntOrNull() ?: 0
+                        if (count <= 0) {
+                            Toast.makeText(context, "Please enter a valid count > 0", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        isProcessingPast = true
+                        viewModel.markPastAttendance(count) { success, msg ->
+                            isProcessingPast = false
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                            if (success) {
+                                showMarkPastDialog = false
+                                pastClassesInput = ""
+                            }
+                        }
+                    },
+                    enabled = !isProcessingPast && (pastClassesInput.toIntOrNull() ?: 0) > 0
+                ) {
+                    if (isProcessingPast) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Text("Apply Attendance")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showMarkPastDialog = false
+                        pastClassesInput = ""
+                    },
+                    enabled = !isProcessingPast
+                ) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 }
