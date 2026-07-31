@@ -86,7 +86,8 @@ class TimetableOcrService {
             - endTime: Time in HH:mm 24-hour format (e.g., "10:00", "16:00")
             - roomLocation: Room, lab, or hall number if available, else empty string ""
             - dayOfWeek: Integer 1-7 (1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday, 7=Sunday)
-            - isPractical: Boolean true if this class is a practical session, lab, workshop, or tutorial with hands-on practice, else false.
+            - isPractical: Boolean true if this class is a practical session, lab, workshop, tutorial, or hands-on practice (or held in a lab room), else false for normal theory lectures/classes.
+            CRITICAL: DO NOT MIX NORMAL THEORY CLASSES AND LAB SESSIONS. A normal lecture class (isPractical: false) and a lab class (isPractical: true) for the same subject MUST BE DISTINGUISHED.
 
             Respond ONLY with raw JSON in this exact structure:
             {
@@ -267,7 +268,23 @@ class TimetableOcrService {
         return result
     }
 
+    private fun isLabItem(item: ParsedTimetableItem): Boolean {
+        return item.isPractical ||
+                item.subjectName.contains("lab", ignoreCase = true) ||
+                item.subjectName.contains("practical", ignoreCase = true) ||
+                item.subjectName.contains("workshop", ignoreCase = true) ||
+                item.subjectCode.contains("lab", ignoreCase = true) ||
+                item.roomLocation.contains("lab", ignoreCase = true)
+    }
+
     private fun isSameSubject(a: ParsedTimetableItem, b: ParsedTimetableItem): Boolean {
+        // Critical: Do NOT merge a Normal Class with a LAB Class!
+        val isLabA = isLabItem(a)
+        val isLabB = isLabItem(b)
+        if (isLabA != isLabB) {
+            return false
+        }
+
         val codeA = a.subjectCode.trim()
         val codeB = b.subjectCode.trim()
         if (codeA.isNotEmpty() && codeB.isNotEmpty() && codeA.equals(codeB, ignoreCase = true)) {
@@ -292,13 +309,7 @@ class TimetableOcrService {
         val endMin = parseTimeToMinutes(item.endTime)
         val durationMinutes = maxOf(15, endMin - startMin)
 
-        val isLab = item.isPractical ||
-                item.subjectName.contains("lab", ignoreCase = true) ||
-                item.subjectName.contains("practical", ignoreCase = true) ||
-                item.subjectName.contains("workshop", ignoreCase = true) ||
-                item.subjectCode.contains("lab", ignoreCase = true) ||
-                item.roomLocation.contains("lab", ignoreCase = true)
-
+        val isLab = isLabItem(item)
         item.isPractical = isLab
 
         // User Rule:

@@ -724,18 +724,16 @@ private fun PreviewStep(
                                                 }
                                             }
 
-                                            if (item.isPractical) {
-                                                Surface(
-                                                    shape = RoundedCornerShape(4.dp),
-                                                    color = MaterialTheme.colorScheme.tertiaryContainer
-                                                ) {
-                                                    Text(
-                                                        text = "LAB",
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
-                                                    )
-                                                }
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = if (item.isPractical) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer
+                                            ) {
+                                                Text(
+                                                    text = if (item.isPractical) "LAB" else "LECTURE",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = if (item.isPractical) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+                                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                                )
                                             }
 
                                             Surface(

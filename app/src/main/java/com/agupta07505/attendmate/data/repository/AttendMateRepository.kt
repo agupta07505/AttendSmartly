@@ -60,10 +60,26 @@ class AttendMateRepository(
             val normCode = item.subjectCode.trim()
             if (normName.isEmpty() && normCode.isEmpty()) continue
 
-            // Determine primary display name/code: if subjectCode exists (e.g. "DBMS"), use it as preferred subject identifier if desired or match by code
-            var subject = existingSubjects.find {
-                (normCode.isNotEmpty() && (it.code.equals(normCode, ignoreCase = true) || it.name.equals(normCode, ignoreCase = true))) ||
-                        (normName.isNotEmpty() && (it.name.equals(normName, ignoreCase = true) || it.code.equals(normName, ignoreCase = true)))
+            val isLabItem = item.isPractical ||
+                    normName.contains("lab", ignoreCase = true) ||
+                    normName.contains("practical", ignoreCase = true) ||
+                    normName.contains("workshop", ignoreCase = true) ||
+                    normCode.contains("lab", ignoreCase = true)
+
+            val targetType = if (isLabItem) "Lab" else "Lecture"
+
+            // Match subject by BOTH name/code AND subject category (Lab vs Lecture)
+            var subject = existingSubjects.find { sub ->
+                val subIsLab = sub.type.equals("Lab", ignoreCase = true) ||
+                        sub.type.equals("Practical", ignoreCase = true) ||
+                        sub.name.contains("lab", ignoreCase = true)
+                
+                val sameTypeCategory = (subIsLab == isLabItem)
+
+                val nameMatches = (normName.isNotEmpty() && (sub.name.equals(normName, ignoreCase = true) || sub.code.equals(normName, ignoreCase = true))) ||
+                        (normCode.isNotEmpty() && (sub.code.equals(normCode, ignoreCase = true) || sub.name.equals(normCode, ignoreCase = true)))
+
+                sameTypeCategory && nameMatches
             }
 
             val subjectId = if (subject != null) {
@@ -77,16 +93,19 @@ class AttendMateRepository(
                 subject.id
             } else {
                 val newColor = colors[existingSubjects.size % colors.size]
-                val displayName = if (normName.isNotBlank()) normName else normCode
+                var displayName = if (normName.isNotBlank()) normName else normCode
+                if (isLabItem && !displayName.contains("lab", ignoreCase = true) && !displayName.contains("practical", ignoreCase = true)) {
+                    displayName = "$displayName Lab"
+                }
                 val displayCode = if (normCode.isNotBlank()) normCode else ""
                 val newSub = SubjectEntity(
                     name = displayName,
                     code = displayCode,
-                    type = if (item.isPractical) "Lab" else "Lecture",
+                    type = targetType,
                     teacherName = item.teacherName.trim(),
                     room = item.roomLocation,
                     colorValue = newColor,
-                    iconName = if (item.isPractical) "Science" else "Book",
+                    iconName = if (isLabItem) "Science" else "Book",
                     notes = if (normCode.isNotBlank() && normCode != displayName) "Code: $normCode" else ""
                 )
                 val newId = subjectDao.insertSubject(newSub)
