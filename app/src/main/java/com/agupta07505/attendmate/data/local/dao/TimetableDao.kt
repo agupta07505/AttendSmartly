@@ -29,4 +29,7 @@ interface TimetableDao {
 
     @Query("DELETE FROM timetable_entries WHERE id = :id")
     suspend fun deleteEntryById(id: Long)
+
+    @Query("DELETE FROM timetable_entries")
+    suspend fun deleteAllEntries()
 }

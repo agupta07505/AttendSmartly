@@ -43,9 +43,11 @@ fun TimetableScreen(
     val selectedDayOfWeek by viewModel.selectedDayOfWeek.collectAsState()
     val entriesForSelectedDay by viewModel.entriesForSelectedDay.collectAsState()
     val activeSubjects by viewModel.activeSubjects.collectAsState()
+    val ocrState by viewModel.ocrState.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var editingEntry by remember { mutableStateOf<TimetableEntryEntity?>(null) }
+    var showOcrDialog by remember { mutableStateOf(false) }
 
     var showShareDialog by remember { mutableStateOf(false) }
     var shareJsonText by remember { mutableStateOf("") }
@@ -88,6 +90,16 @@ fun TimetableScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { showOcrDialog = true },
+                        modifier = Modifier.testTag("timetable_ai_scan_btn")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = "Scan AI Timetable",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     IconButton(
                         onClick = {
                             viewModel.exportTimetable { json ->
@@ -169,15 +181,31 @@ fun TimetableScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Tap the '+' button to schedule classes for this day.",
+                            text = "Tap below to add classes manually or scan an image of your timetable using AI.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
-                        Button(
-                            onClick = { showAddDialog = true },
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                             modifier = Modifier.padding(top = 8.dp)
                         ) {
-                            Text("Add Class")
+                            ElevatedButton(
+                                onClick = { showOcrDialog = true },
+                                colors = ButtonDefaults.elevatedButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            ) {
+                                Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Scan Timetable Image", fontWeight = FontWeight.Bold)
+                            }
+                            OutlinedButton(
+                                onClick = { showAddDialog = true }
+                            ) {
+                                Text("Add Class")
+                            }
                         }
                     }
                 }
@@ -388,6 +416,19 @@ fun TimetableScreen(
                 TextButton(onClick = { showImportDialog = false }) {
                     Text("Cancel")
                 }
+            }
+        )
+    }
+
+    if (showOcrDialog || ocrState !is AiTimetableOcrState.Idle) {
+        TimetableOcrDialog(
+            state = ocrState,
+            onPickImage = { uri -> viewModel.startOcrFromUri(context, uri) },
+            onProcessSampleImage = { bitmap -> viewModel.startOcrFromBitmap(bitmap) },
+            onConfirmImport = { items, replace -> viewModel.confirmOcrImport(items, replace) },
+            onDismiss = {
+                viewModel.resetOcrState()
+                showOcrDialog = false
             }
         )
     }

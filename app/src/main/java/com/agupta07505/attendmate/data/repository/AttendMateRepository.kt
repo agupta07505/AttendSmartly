@@ -38,6 +38,58 @@ class AttendMateRepository(
     suspend fun insertTimetableEntry(entry: TimetableEntryEntity): Long = timetableDao.insertEntry(entry)
     suspend fun updateTimetableEntry(entry: TimetableEntryEntity) = timetableDao.updateEntry(entry)
     suspend fun deleteTimetableEntry(id: Long) = timetableDao.deleteEntryById(id)
+    suspend fun deleteAllTimetableEntries() = timetableDao.deleteAllEntries()
+
+    suspend fun importParsedTimetable(
+        items: List<com.agupta07505.attendmate.domain.model.ParsedTimetableItem>,
+        replaceExisting: Boolean = false
+    ) {
+        if (replaceExisting) {
+            timetableDao.deleteAllEntries()
+        }
+
+        val existingSubjects = subjectDao.getAllSubjects().first().toMutableList()
+        val colors = listOf(
+            0xFF2196F3L, 0xFF4CAF50L, 0xFFFF9800L, 0xFF9C27B0L,
+            0xFFE91E63L, 0xFF00BCD4L, 0xFF3F51B5L, 0xFF009688L, 0xFFFF5722L
+        )
+
+        for (item in items) {
+            val normName = item.subjectName.trim()
+            if (normName.isEmpty()) continue
+
+            var subject = existingSubjects.find {
+                it.name.equals(normName, ignoreCase = true) ||
+                        (item.subjectCode.isNotBlank() && it.code.equals(item.subjectCode.trim(), ignoreCase = true))
+            }
+
+            val subjectId = if (subject != null) {
+                subject.id
+            } else {
+                val newColor = colors[existingSubjects.size % colors.size]
+                val newSub = SubjectEntity(
+                    name = normName,
+                    code = item.subjectCode,
+                    room = item.roomLocation,
+                    colorValue = newColor,
+                    iconName = "Book"
+                )
+                val newId = subjectDao.insertSubject(newSub)
+                val createdSubject = newSub.copy(id = newId)
+                existingSubjects.add(createdSubject)
+                newId
+            }
+
+            val entry = TimetableEntryEntity(
+                subjectId = subjectId,
+                dayOfWeek = item.dayOfWeek.coerceIn(1, 7),
+                startTime = item.startTime,
+                endTime = item.endTime,
+                roomOverride = item.roomLocation
+            )
+            timetableDao.insertEntry(entry)
+        }
+    }
 
     // Attendance
     fun getSessionsForDate(dateStr: String): Flow<List<AttendanceSessionEntity>> = attendanceDao.getSessionsForDate(dateStr)

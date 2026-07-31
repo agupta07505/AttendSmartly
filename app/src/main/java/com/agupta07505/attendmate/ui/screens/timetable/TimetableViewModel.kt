@@ -15,10 +15,20 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import com.agupta07505.attendmate.data.remote.gemini.TimetableOcrService
+import com.agupta07505.attendmate.domain.model.ParsedTimetableItem
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class TimetableViewModel(
     private val repository: AttendMateRepository
 ) : ViewModel() {
+
+    private val ocrService = TimetableOcrService()
+
+    private val _ocrState = MutableStateFlow<AiTimetableOcrState>(AiTimetableOcrState.Idle)
+    val ocrState: StateFlow<AiTimetableOcrState> = _ocrState.asStateFlow()
 
     private val _selectedDayOfWeek = MutableStateFlow(LocalDate.now().dayOfWeek.value)
     val selectedDayOfWeek: StateFlow<Int> = _selectedDayOfWeek.asStateFlow()
@@ -99,6 +109,60 @@ class TimetableViewModel(
             val (success, message) = ExportImportUtils.importTimetableFromJson(jsonString, repository)
             onResult(success, message)
         }
+    }
+
+    fun startOcrFromUri(context: Context, uri: Uri) {
+        viewModelScope.launch {
+            _ocrState.value = AiTimetableOcrState.Processing(imageUri = uri, stepMessage = "Reading timetable image...")
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                if (bitmap == null) {
+                    _ocrState.value = AiTimetableOcrState.Error("Failed to decode image from Uri")
+                    return@launch
+                }
+                _ocrState.value = AiTimetableOcrState.Processing(imageUri = uri, stepMessage = "Extracting classes & timings using Gemini AI...")
+                val items = ocrService.extractTimetableFromImage(bitmap, isSampleImage = false)
+                if (items.isEmpty()) {
+                    _ocrState.value = AiTimetableOcrState.Error("No valid class schedule detected. Please ensure the timetable is clearly visible.")
+                } else {
+                    _ocrState.value = AiTimetableOcrState.Preview(imageUri = uri, parsedItems = items)
+                }
+            } catch (e: Exception) {
+                _ocrState.value = AiTimetableOcrState.Error(e.localizedMessage ?: "Detection error occurred")
+            }
+        }
+    }
+
+    fun startOcrFromBitmap(bitmap: Bitmap) {
+        viewModelScope.launch {
+            _ocrState.value = AiTimetableOcrState.Processing(imageUri = null, stepMessage = "Analyzing sample timetable using Gemini AI...")
+            try {
+                val items = ocrService.extractTimetableFromImage(bitmap, isSampleImage = true)
+                if (items.isEmpty()) {
+                    _ocrState.value = AiTimetableOcrState.Error("No valid class schedule detected.")
+                } else {
+                    _ocrState.value = AiTimetableOcrState.Preview(imageUri = null, parsedItems = items)
+                }
+            } catch (e: Exception) {
+                _ocrState.value = AiTimetableOcrState.Error(e.localizedMessage ?: "Detection error occurred")
+            }
+        }
+    }
+
+    fun confirmOcrImport(items: List<ParsedTimetableItem>, replaceExisting: Boolean) {
+        viewModelScope.launch {
+            try {
+                repository.importParsedTimetable(items, replaceExisting)
+                _ocrState.value = AiTimetableOcrState.Success("Successfully imported ${items.size} class schedule entries into your timetable!")
+            } catch (e: Exception) {
+                _ocrState.value = AiTimetableOcrState.Error("Failed to save schedule: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    fun resetOcrState() {
+        _ocrState.value = AiTimetableOcrState.Idle
     }
 
     fun importTimetableFromUri(context: Context, uri: Uri, onResult: (Boolean, String) -> Unit) {

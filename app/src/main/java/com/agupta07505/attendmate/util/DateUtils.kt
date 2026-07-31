@@ -47,6 +47,14 @@ object DateUtils {
         }
     }
 
+    fun getDayOfWeekName(dayOfWeek: Int): String {
+        return try {
+            java.time.DayOfWeek.of(dayOfWeek.coerceIn(1, 7)).getDisplayName(TextStyle.FULL, Locale.getDefault())
+        } catch (e: Exception) {
+            "Monday"
+        }
+    }
+
     fun calculateDurationMinutes(startTime: String, endTime: String): Int {
         return try {
             val start = LocalTime.parse(startTime, timeFormatter24)
