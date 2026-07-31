@@ -17,12 +17,14 @@ import java.time.LocalDate
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import com.agupta07505.attendmate.data.preferences.UserPreferencesRepository
 import com.agupta07505.attendmate.data.remote.gemini.TimetableOcrService
 import com.agupta07505.attendmate.domain.model.ParsedTimetableItem
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TimetableViewModel(
-    private val repository: AttendMateRepository
+    private val repository: AttendMateRepository,
+    private val preferencesRepository: UserPreferencesRepository? = null
 ) : ViewModel() {
 
     private val ocrService = TimetableOcrService()
@@ -35,6 +37,17 @@ class TimetableViewModel(
 
     val activeSubjects: StateFlow<List<SubjectEntity>> = repository.activeSubjects
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val geminiApiKey: StateFlow<String> = (preferencesRepository?.userPreferencesFlow
+        ?.map { it.geminiApiKey }
+        ?: flowOf(""))
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
+
+    fun saveGeminiApiKey(apiKey: String) {
+        viewModelScope.launch {
+            preferencesRepository?.updateGeminiApiKey(apiKey)
+        }
+    }
 
     val entriesForSelectedDay: StateFlow<List<TimetableWithSubject>> = combine(
         _selectedDayOfWeek,
@@ -122,7 +135,8 @@ class TimetableViewModel(
                     return@launch
                 }
                 _ocrState.value = AiTimetableOcrState.Processing(imageUri = uri, stepMessage = "Extracting classes & timings using Gemini AI...")
-                val items = ocrService.extractTimetableFromImage(bitmap, isSampleImage = false)
+                val customKey = preferencesRepository?.userPreferencesFlow?.first()?.geminiApiKey
+                val items = ocrService.extractTimetableFromImage(bitmap, isSampleImage = false, customApiKey = customKey)
                 if (items.isEmpty()) {
                     _ocrState.value = AiTimetableOcrState.Error("No valid class schedule detected. Please ensure the timetable is clearly visible.")
                 } else {
@@ -138,7 +152,8 @@ class TimetableViewModel(
         viewModelScope.launch {
             _ocrState.value = AiTimetableOcrState.Processing(imageUri = null, stepMessage = "Analyzing sample timetable using Gemini AI...")
             try {
-                val items = ocrService.extractTimetableFromImage(bitmap, isSampleImage = true)
+                val customKey = preferencesRepository?.userPreferencesFlow?.first()?.geminiApiKey
+                val items = ocrService.extractTimetableFromImage(bitmap, isSampleImage = true, customApiKey = customKey)
                 if (items.isEmpty()) {
                     _ocrState.value = AiTimetableOcrState.Error("No valid class schedule detected.")
                 } else {

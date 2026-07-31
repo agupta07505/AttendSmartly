@@ -1,5 +1,7 @@
 package com.agupta07505.attendmate.ui.screens.settings
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -33,6 +37,10 @@ fun SettingsScreen(
     var reminderText by remember(prefs.defaultReminderMinutes) {
         mutableStateOf(prefs.defaultReminderMinutes.toString())
     }
+    var apiKeyText by remember(prefs.geminiApiKey) {
+        mutableStateOf(prefs.geminiApiKey)
+    }
+    var apiKeyVisible by remember { mutableStateOf(false) }
 
     var showClearDataConfirm by remember { mutableStateOf(false) }
     var showDemoConfirm by remember { mutableStateOf(false) }
@@ -173,6 +181,77 @@ fun SettingsScreen(
                 }
             }
 
+            // Gemini API Key & AI Settings
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            "AI Timetable OCR & Gemini Key",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Text(
+                        text = "AttendMate uses Gemini AI to automatically extract timetables from images. Enter your personal Gemini API key below to avoid shared rate limits.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    OutlinedTextField(
+                        value = apiKeyText,
+                        onValueChange = {
+                            apiKeyText = it
+                            viewModel.updateGeminiApiKey(it)
+                        },
+                        label = { Text("Gemini API Key") },
+                        placeholder = { Text("AIzaSy...") },
+                        leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
+                        trailingIcon = {
+                            IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
+                                Icon(
+                                    imageVector = if (apiKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (apiKeyVisible) "Hide API key" else "Show API key"
+                                )
+                            }
+                        },
+                        visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("settings_gemini_api_key_input")
+                    )
+
+                    OutlinedButton(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/app/apikey"))
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Get Free Gemini API Key (Google AI Studio)", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+
             // Backup & Export Data
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -251,6 +330,23 @@ fun SettingsScreen(
                     }
                 }
             }
+
+            // Developer Footer Branding
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Made with ❤️ by Animesh Gupta",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 

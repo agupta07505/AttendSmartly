@@ -1,5 +1,6 @@
 package com.agupta07505.attendmate.ui.screens.timetable
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -20,6 +21,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -54,6 +59,8 @@ import java.util.UUID
 @Composable
 fun TimetableOcrDialog(
     state: AiTimetableOcrState,
+    currentApiKey: String = "",
+    onSaveApiKey: (String) -> Unit = {},
     onPickImage: (Uri) -> Unit,
     onProcessSampleImage: (Bitmap) -> Unit,
     onConfirmImport: (List<ParsedTimetableItem>, Boolean) -> Unit,
@@ -61,12 +68,16 @@ fun TimetableOcrDialog(
 ) {
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        )
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
+                .fillMaxWidth(0.96f)
+                .fillMaxHeight(0.92f)
+                .padding(vertical = 12.dp)
+                .systemBarsPadding(),
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
@@ -75,6 +86,8 @@ fun TimetableOcrDialog(
                 when (state) {
                     is AiTimetableOcrState.Idle -> {
                         PickImageStep(
+                            currentApiKey = currentApiKey,
+                            onSaveApiKey = onSaveApiKey,
                             onPickImage = onPickImage,
                             onProcessSampleImage = onProcessSampleImage,
                             onDismiss = onDismiss
@@ -116,11 +129,16 @@ fun TimetableOcrDialog(
 
 @Composable
 private fun PickImageStep(
+    currentApiKey: String,
+    onSaveApiKey: (String) -> Unit,
     onPickImage: (Uri) -> Unit,
     onProcessSampleImage: (Bitmap) -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    var apiKeyInput by remember(currentApiKey) { mutableStateOf(currentApiKey) }
+    var keyVisible by remember { mutableStateOf(false) }
+
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -132,9 +150,11 @@ private fun PickImageStep(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -161,10 +181,10 @@ private fun PickImageStep(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Banner Card
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
                 .clip(RoundedCornerShape(20.dp))
                 .background(
                     Brush.verticalGradient(
@@ -184,7 +204,7 @@ private fun PickImageStep(
                     ),
                     RoundedCornerShape(20.dp)
                 )
-                .padding(24.dp),
+                .padding(20.dp),
             contentAlignment = Alignment.Center
         ) {
             Column(
@@ -194,40 +214,141 @@ private fun PickImageStep(
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(72.dp)
+                    modifier = Modifier.size(60.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.DocumentScanner,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(30.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Scan or Upload Your Timetable",
+                    text = "Scan or Upload Timetable",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "Gemini AI instantly extracts subjects, times, and days while filtering out unnecessary headers and noise.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Gemini AI extracts subjects, times, and days from your timetable photo or document.",
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
+        // Gemini API Key Config Card inside Scanner
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Default.Key, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        Text("Gemini API Key", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    }
+                    if (apiKeyInput.isNotBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                "Active Key",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.errorContainer
+                        ) {
+                            Text(
+                                "Key Required for Custom Scan",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = "Add your free Gemini API key for scanning custom images. Free to create on Google AI Studio.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                OutlinedTextField(
+                    value = apiKeyInput,
+                    onValueChange = {
+                        apiKeyInput = it
+                        onSaveApiKey(it)
+                    },
+                    label = { Text("Gemini API Key") },
+                    placeholder = { Text("AIzaSy...") },
+                    leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
+                    trailingIcon = {
+                        IconButton(onClick = { keyVisible = !keyVisible }) {
+                            Icon(
+                                imageVector = if (keyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (keyVisible) "Hide API Key" else "Show API Key"
+                            )
+                        }
+                    },
+                    visualTransformation = if (keyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/app/apikey"))
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Get Free API Key", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Action Buttons
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -290,6 +411,7 @@ private fun ProcessingStep(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -512,23 +634,28 @@ private fun PreviewStep(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
+                                    val primaryTitle = item.subjectCode.ifBlank { item.subjectName }
+                                    val secondaryTitle = if (item.subjectCode.isNotBlank() && !item.subjectName.equals(item.subjectCode, ignoreCase = true)) item.subjectName else ""
+
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
-                                            text = item.subjectName,
+                                            text = primaryTitle,
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold
                                         )
-                                        if (item.subjectCode.isNotBlank()) {
+                                        if (secondaryTitle.isNotBlank()) {
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Surface(
                                                 shape = RoundedCornerShape(6.dp),
                                                 color = MaterialTheme.colorScheme.secondaryContainer
                                             ) {
                                                 Text(
-                                                    text = item.subjectCode,
+                                                    text = secondaryTitle,
                                                     style = MaterialTheme.typography.labelSmall,
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
                                                 )
                                             }
                                         }
@@ -568,6 +695,58 @@ private fun PreviewStep(
                                                     text = item.roomLocation,
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    if (item.teacherName.isNotBlank() || item.isPractical || item.attendanceUnitCount > 1) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            if (item.teacherName.isNotBlank()) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(
+                                                        Icons.Default.Person,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(13.dp),
+                                                        tint = MaterialTheme.colorScheme.tertiary
+                                                    )
+                                                    Spacer(modifier = Modifier.width(3.dp))
+                                                    Text(
+                                                        text = item.teacherName,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.tertiary,
+                                                        fontWeight = FontWeight.Medium
+                                                    )
+                                                }
+                                            }
+
+                                            if (item.isPractical) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    color = MaterialTheme.colorScheme.tertiaryContainer
+                                                ) {
+                                                    Text(
+                                                        text = "LAB",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                                    )
+                                                }
+                                            }
+
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                                            ) {
+                                                Text(
+                                                    text = "${item.attendanceUnitCount} count${if (item.attendanceUnitCount > 1) "s" else ""}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
                                                 )
                                             }
                                         }
@@ -698,9 +877,12 @@ private fun EditParsedItemDialog(
 ) {
     var subjectName by remember { mutableStateOf(item.subjectName) }
     var subjectCode by remember { mutableStateOf(item.subjectCode) }
+    var teacherName by remember { mutableStateOf(item.teacherName) }
     var startTime by remember { mutableStateOf(item.startTime) }
     var endTime by remember { mutableStateOf(item.endTime) }
     var roomLocation by remember { mutableStateOf(item.roomLocation) }
+    var isPractical by remember { mutableStateOf(item.isPractical) }
+    var attendanceUnitCount by remember { mutableIntStateOf(item.attendanceUnitCount) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -718,7 +900,15 @@ private fun EditParsedItemDialog(
                 OutlinedTextField(
                     value = subjectCode,
                     onValueChange = { subjectCode = it },
-                    label = { Text("Subject Code (Optional)") },
+                    label = { Text("Subject Code / Acronym (Optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = teacherName,
+                    onValueChange = { teacherName = it },
+                    label = { Text("Teacher / Instructor Name (Optional)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -747,24 +937,65 @@ private fun EditParsedItemDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Practical Lab Session", style = MaterialTheme.typography.bodyMedium)
+                    Switch(
+                        checked = isPractical,
+                        onCheckedChange = { isPractical = it }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Class Count", style = MaterialTheme.typography.bodyMedium)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = { if (attendanceUnitCount > 1) attendanceUnitCount-- }
+                        ) {
+                            Icon(Icons.Default.Remove, contentDescription = "Decrease count")
+                        }
+                        Text(
+                            text = "$attendanceUnitCount",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                        IconButton(
+                            onClick = { attendanceUnitCount++ }
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Increase count")
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    if (subjectName.isNotBlank()) {
+                    if (subjectName.isNotBlank() || subjectCode.isNotBlank()) {
                         onSave(
                             item.copy(
                                 subjectName = subjectName.trim(),
                                 subjectCode = subjectCode.trim(),
+                                teacherName = teacherName.trim(),
                                 startTime = startTime.trim(),
                                 endTime = endTime.trim(),
-                                roomLocation = roomLocation.trim()
+                                roomLocation = roomLocation.trim(),
+                                isPractical = isPractical,
+                                attendanceUnitCount = attendanceUnitCount.coerceAtLeast(1)
                             )
                         )
                     }
                 },
-                enabled = subjectName.isNotBlank()
+                enabled = subjectName.isNotBlank() || subjectCode.isNotBlank()
             ) {
                 Text("Save")
             }
@@ -782,9 +1013,12 @@ private fun ErrorStep(
     message: String,
     onRetry: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -813,11 +1047,27 @@ private fun ErrorStep(
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
+
+        OutlinedButton(
+            onClick = {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/app/apikey"))
+                context.startActivity(intent)
+            },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth(0.9f)
+        ) {
+            Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Get Free Gemini API Key")
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         Button(
             onClick = onRetry,
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth(0.9f)
         ) {
             Text("Try Again")
         }
@@ -832,6 +1082,7 @@ private fun SuccessStep(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

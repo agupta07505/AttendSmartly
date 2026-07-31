@@ -44,6 +44,7 @@ fun TimetableScreen(
     val entriesForSelectedDay by viewModel.entriesForSelectedDay.collectAsState()
     val activeSubjects by viewModel.activeSubjects.collectAsState()
     val ocrState by viewModel.ocrState.collectAsState()
+    val geminiApiKey by viewModel.geminiApiKey.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var editingEntry by remember { mutableStateOf<TimetableEntryEntity?>(null) }
@@ -186,25 +187,34 @@ fun TimetableScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                             modifier = Modifier.padding(top = 8.dp)
                         ) {
                             ElevatedButton(
                                 onClick = { showOcrDialog = true },
+                                modifier = Modifier
+                                    .fillMaxWidth(0.85f)
+                                    .testTag("timetable_empty_scan_btn"),
                                 colors = ButtonDefaults.elevatedButtonColors(
                                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             ) {
                                 Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text("Scan Timetable Image", fontWeight = FontWeight.Bold)
                             }
                             OutlinedButton(
-                                onClick = { showAddDialog = true }
+                                onClick = { showAddDialog = true },
+                                modifier = Modifier
+                                    .fillMaxWidth(0.85f)
+                                    .testTag("timetable_empty_add_btn")
                             ) {
-                                Text("Add Class")
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Add Class Manually")
                             }
                         }
                     }
@@ -423,6 +433,8 @@ fun TimetableScreen(
     if (showOcrDialog || ocrState !is AiTimetableOcrState.Idle) {
         TimetableOcrDialog(
             state = ocrState,
+            currentApiKey = geminiApiKey,
+            onSaveApiKey = { key -> viewModel.saveGeminiApiKey(key) },
             onPickImage = { uri -> viewModel.startOcrFromUri(context, uri) },
             onProcessSampleImage = { bitmap -> viewModel.startOcrFromBitmap(bitmap) },
             onConfirmImport = { items, replace -> viewModel.confirmOcrImport(items, replace) },

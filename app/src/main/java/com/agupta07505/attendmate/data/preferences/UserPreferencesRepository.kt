@@ -23,7 +23,8 @@ data class UserPreferences(
     val onboardingCompleted: Boolean = false,
     val confirmMarkingAbsent: Boolean = false,
     val notificationSound: Boolean = true,
-    val notificationVibrate: Boolean = true
+    val notificationVibrate: Boolean = true,
+    val geminiApiKey: String = ""
 )
 
 class UserPreferencesRepository(private val context: Context) {
@@ -41,6 +42,7 @@ class UserPreferencesRepository(private val context: Context) {
         val CONFIRM_MARKING_ABSENT = booleanPreferencesKey("confirm_marking_absent")
         val NOTIFICATION_SOUND = booleanPreferencesKey("notification_sound")
         val NOTIFICATION_VIBRATE = booleanPreferencesKey("notification_vibrate")
+        val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -64,7 +66,8 @@ class UserPreferencesRepository(private val context: Context) {
             onboardingCompleted = preferences[PreferencesKeys.ONBOARDING_COMPLETED] ?: false,
             confirmMarkingAbsent = preferences[PreferencesKeys.CONFIRM_MARKING_ABSENT] ?: false,
             notificationSound = preferences[PreferencesKeys.NOTIFICATION_SOUND] ?: true,
-            notificationVibrate = preferences[PreferencesKeys.NOTIFICATION_VIBRATE] ?: true
+            notificationVibrate = preferences[PreferencesKeys.NOTIFICATION_VIBRATE] ?: true,
+            geminiApiKey = preferences[PreferencesKeys.GEMINI_API_KEY] ?: ""
         )
     }
 
@@ -120,6 +123,12 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun updateNotificationVibrate(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.NOTIFICATION_VIBRATE] = enabled
+        }
+    }
+
+    suspend fun updateGeminiApiKey(apiKey: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.GEMINI_API_KEY] = apiKey.trim()
         }
     }
 

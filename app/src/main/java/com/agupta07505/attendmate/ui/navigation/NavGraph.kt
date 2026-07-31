@@ -129,7 +129,7 @@ fun NavGraph(
             }
 
             composable(Screen.Timetable.route) {
-                val timetableVm: TimetableViewModel = getViewModel { app -> TimetableViewModel(app.repository) }
+                val timetableVm: TimetableViewModel = getViewModel { app -> TimetableViewModel(app.repository, app.userPreferencesRepository) }
                 TimetableScreen(
                     viewModel = timetableVm,
                     onNavigateBack = {

@@ -56,23 +56,37 @@ class AttendMateRepository(
 
         for (item in items) {
             val normName = item.subjectName.trim()
-            if (normName.isEmpty()) continue
+            val normCode = item.subjectCode.trim()
+            if (normName.isEmpty() && normCode.isEmpty()) continue
 
+            // Determine primary display name/code: if subjectCode exists (e.g. "DBMS"), use it as preferred subject identifier if desired or match by code
             var subject = existingSubjects.find {
-                it.name.equals(normName, ignoreCase = true) ||
-                        (item.subjectCode.isNotBlank() && it.code.equals(item.subjectCode.trim(), ignoreCase = true))
+                (normCode.isNotEmpty() && (it.code.equals(normCode, ignoreCase = true) || it.name.equals(normCode, ignoreCase = true))) ||
+                        (normName.isNotEmpty() && (it.name.equals(normName, ignoreCase = true) || it.code.equals(normName, ignoreCase = true)))
             }
 
             val subjectId = if (subject != null) {
+                // If existing subject doesn't have a teacher name, update it with imported teacherName
+                if (subject.teacherName.isBlank() && item.teacherName.isNotBlank()) {
+                    val updatedSubject = subject.copy(teacherName = item.teacherName.trim())
+                    subjectDao.updateSubject(updatedSubject)
+                    val idx = existingSubjects.indexOfFirst { it.id == subject.id }
+                    if (idx >= 0) existingSubjects[idx] = updatedSubject
+                }
                 subject.id
             } else {
                 val newColor = colors[existingSubjects.size % colors.size]
+                val displayName = if (normCode.isNotBlank()) normCode else normName
+                val displayCode = if (normCode.isNotBlank()) normCode else ""
                 val newSub = SubjectEntity(
-                    name = normName,
-                    code = item.subjectCode,
+                    name = displayName,
+                    code = displayCode,
+                    type = if (item.isPractical) "Lab" else "Lecture",
+                    teacherName = item.teacherName.trim(),
                     room = item.roomLocation,
                     colorValue = newColor,
-                    iconName = "Book"
+                    iconName = if (item.isPractical) "Science" else "Book",
+                    notes = if (normName.isNotBlank() && normName != displayName) "Full Name: $normName" else ""
                 )
                 val newId = subjectDao.insertSubject(newSub)
                 val createdSubject = newSub.copy(id = newId)
@@ -85,7 +99,9 @@ class AttendMateRepository(
                 dayOfWeek = item.dayOfWeek.coerceIn(1, 7),
                 startTime = item.startTime,
                 endTime = item.endTime,
-                roomOverride = item.roomLocation
+                roomOverride = item.roomLocation,
+                teacherOverride = item.teacherName.trim(),
+                attendanceUnitCount = item.attendanceUnitCount.coerceAtLeast(1)
             )
             timetableDao.insertEntry(entry)
         }

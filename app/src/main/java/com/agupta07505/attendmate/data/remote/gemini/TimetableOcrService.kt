@@ -35,19 +35,19 @@ class TimetableOcrService {
 
     suspend fun extractTimetableFromImage(
         bitmap: Bitmap,
-        isSampleImage: Boolean = false
+        isSampleImage: Boolean = false,
+        customApiKey: String? = null
     ): List<ParsedTimetableItem> = withContext(Dispatchers.IO) {
-        val apiKey = BuildConfig.GEMINI_API_KEY.trim()
-        val isApiKeyValid = apiKey.isNotEmpty() && apiKey != "MY_GEMINI_API_KEY"
+        val apiKey = customApiKey?.trim() ?: ""
+        val isApiKeyValid = apiKey.isNotEmpty()
 
         if (isSampleImage && !isApiKeyValid) {
-            // Instant reliable response for sample image when key is default
+            // Instant response for sample image when no user key is provided
             return@withContext getSampleTimetableItems()
         }
 
         if (!isApiKeyValid) {
-            if (isSampleImage) return@withContext getSampleTimetableItems()
-            throw IllegalStateException("Gemini API key is not configured. Please set your GEMINI_API_KEY in the Secrets panel in AI Studio.")
+            throw IllegalStateException("Gemini API Key is required for scanning timetables. Please enter your Gemini API Key in Settings or in the Timetable Scanner dialog.")
         }
 
         val resizedBitmap = resizeBitmapIfNeeded(bitmap, maxDimension = 1280)
@@ -62,23 +62,27 @@ class TimetableOcrService {
             1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday, 7 = Sunday.
 
             For each class/entry extract:
-            - subjectName: Full clean subject name (e.g., "Data Structures", "Physics Lab")
-            - subjectCode: Short code if available (e.g., "CS201", "PHY101") or empty string
+            - subjectName: Full clean subject name (e.g., "Database Management System", "Data Structures", "Physics Lab")
+            - subjectCode: Short subject code, course code, or acronym if available or recognizable (e.g., "DBMS" for Database Management System, "DSA" for Data Structures, "CS201", "PHY101"). If full subject name is long, generate a standard short uppercase acronym (e.g., "DBMS", "OS", "CN").
+            - teacherName: Teacher, professor, instructor name or initials if present (e.g., "Dr. Smith", "Prof. Sharma", "AK"), else empty string "".
             - startTime: Time in HH:mm 24-hour format (e.g., "09:00", "14:30")
             - endTime: Time in HH:mm 24-hour format (e.g., "10:00", "16:00")
-            - roomLocation: Room or hall number if available, else empty string
+            - roomLocation: Room, lab, or hall number if available, else empty string ""
             - dayOfWeek: Integer 1-7 (1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday, 7=Sunday)
+            - isPractical: Boolean true if this class is a practical session, lab, workshop, or tutorial with hands-on practice, else false.
 
             Respond ONLY with raw JSON in this exact structure:
             {
               "schedules": [
                 {
-                  "subjectName": "Data Structures",
-                  "subjectCode": "CS201",
+                  "subjectName": "Database Management System",
+                  "subjectCode": "DBMS",
+                  "teacherName": "Dr. Smith",
                   "startTime": "09:00",
                   "endTime": "10:00",
                   "roomLocation": "Room 302",
-                  "dayOfWeek": 1
+                  "dayOfWeek": 1,
+                  "isPractical": false
                 }
               ]
             }
@@ -129,7 +133,7 @@ class TimetableOcrService {
                 val cleanedJson = cleanJsonResponse(rawText)
                 val extractedSchedules = gson.fromJson(cleanedJson, ExtractedSchedulesContainer::class.java)
 
-                val parsed = extractedSchedules.schedules?.mapNotNull { item ->
+                val parsedRaw = extractedSchedules.schedules?.mapNotNull { item ->
                     val name = item.subjectName?.trim()
                     if (name.isNullOrEmpty()) return@mapNotNull null
 
@@ -140,15 +144,19 @@ class TimetableOcrService {
                     ParsedTimetableItem(
                         subjectName = name,
                         subjectCode = item.subjectCode?.trim() ?: "",
+                        teacherName = item.teacherName?.trim() ?: "",
                         startTime = start,
                         endTime = end,
                         roomLocation = item.roomLocation?.trim() ?: "",
-                        dayOfWeek = day
+                        dayOfWeek = day,
+                        isPractical = item.isPractical == true
                     )
                 } ?: emptyList()
 
-                if (parsed.isNotEmpty()) {
-                    return@withContext parsed
+                val mergedAndProcessed = processAndMergeParsedItems(parsedRaw)
+
+                if (mergedAndProcessed.isNotEmpty()) {
+                    return@withContext mergedAndProcessed
                 }
             } catch (e: Exception) {
                 lastError = e
@@ -164,15 +172,131 @@ class TimetableOcrService {
     }
 
     private fun getSampleTimetableItems(): List<ParsedTimetableItem> {
-        return listOf(
-            ParsedTimetableItem(subjectName = "Data Structures", subjectCode = "CS201", startTime = "09:00", endTime = "10:00", roomLocation = "Lab 302", dayOfWeek = 1),
-            ParsedTimetableItem(subjectName = "Linear Algebra", subjectCode = "MATH101", startTime = "11:00", endTime = "12:30", roomLocation = "Hall B", dayOfWeek = 1),
-            ParsedTimetableItem(subjectName = "Physics II", subjectCode = "PHY201", startTime = "10:00", endTime = "11:30", roomLocation = "Lab 105", dayOfWeek = 2),
-            ParsedTimetableItem(subjectName = "Object Oriented Prog", subjectCode = "CS202", startTime = "14:00", endTime = "15:30", roomLocation = "Room 401", dayOfWeek = 2),
-            ParsedTimetableItem(subjectName = "Data Structures", subjectCode = "CS201", startTime = "09:00", endTime = "10:30", roomLocation = "Lab 302", dayOfWeek = 3),
-            ParsedTimetableItem(subjectName = "Technical Comm", subjectCode = "ENG102", startTime = "11:00", endTime = "12:30", roomLocation = "Room 204", dayOfWeek = 4),
-            ParsedTimetableItem(subjectName = "Database Systems", subjectCode = "CS203", startTime = "10:00", endTime = "12:00", roomLocation = "Lab 305", dayOfWeek = 5)
+        val rawSample = listOf(
+            ParsedTimetableItem(subjectName = "Database Management System", subjectCode = "DBMS", teacherName = "Dr. A. Sharma", startTime = "09:00", endTime = "10:00", roomLocation = "Lab 302", dayOfWeek = 1, isPractical = false),
+            ParsedTimetableItem(subjectName = "Database Management System", subjectCode = "DBMS", teacherName = "Dr. A. Sharma", startTime = "10:00", endTime = "11:00", roomLocation = "Lab 302", dayOfWeek = 1, isPractical = false),
+            ParsedTimetableItem(subjectName = "Linear Algebra", subjectCode = "MATH101", teacherName = "Prof. R. Verma", startTime = "11:15", endTime = "12:15", roomLocation = "Hall B", dayOfWeek = 1, isPractical = false),
+            ParsedTimetableItem(subjectName = "Physics Lab", subjectCode = "PHY201P", teacherName = "Dr. K. Patel", startTime = "10:00", endTime = "12:00", roomLocation = "Physics Lab 1", dayOfWeek = 2, isPractical = true),
+            ParsedTimetableItem(subjectName = "Object Oriented Prog", subjectCode = "OOP", teacherName = "Prof. S. Gupta", startTime = "14:00", endTime = "15:00", roomLocation = "Room 401", dayOfWeek = 2, isPractical = false),
+            ParsedTimetableItem(subjectName = "Data Structures Lab", subjectCode = "DSA Lab", teacherName = "Prof. M. Roy", startTime = "09:00", endTime = "11:00", roomLocation = "Computer Lab 2", dayOfWeek = 3, isPractical = true)
         )
+        return processAndMergeParsedItems(rawSample)
+    }
+
+    private fun processAndMergeParsedItems(rawItems: List<ParsedTimetableItem>): List<ParsedTimetableItem> {
+        val result = mutableListOf<ParsedTimetableItem>()
+
+        // Process day by day (1..7)
+        for (day in 1..7) {
+            val dayItems = rawItems.filter { it.dayOfWeek == day }
+                .sortedBy { parseTimeToMinutes(it.startTime) }
+
+            if (dayItems.isEmpty()) continue
+
+            var currentMerged: ParsedTimetableItem? = null
+
+            for (item in dayItems) {
+                if (currentMerged == null) {
+                    currentMerged = item.copy()
+                } else {
+                    val currentEndMin = parseTimeToMinutes(currentMerged.endTime)
+                    val nextStartMin = parseTimeToMinutes(item.startTime)
+
+                    // Check if items are for the same subject and side-by-side / back-to-back (or small gap <= 15m)
+                    val sameSubject = isSameSubject(currentMerged, item)
+                    val isAdjacent = (nextStartMin <= currentEndMin) || (nextStartMin - currentEndMin <= 15)
+
+                    if (sameSubject && isAdjacent) {
+                        // Merge side-by-side classes into one
+                        val newEndMin = maxOf(currentEndMin, parseTimeToMinutes(item.endTime))
+                        currentMerged.endTime = minutesToTimeString(newEndMin)
+                        if (currentMerged.subjectCode.isBlank() && item.subjectCode.isNotBlank()) {
+                            currentMerged.subjectCode = item.subjectCode
+                        }
+                        if (currentMerged.teacherName.isBlank() && item.teacherName.isNotBlank()) {
+                            currentMerged.teacherName = item.teacherName
+                        }
+                        if (currentMerged.roomLocation.isBlank() && item.roomLocation.isNotBlank()) {
+                            currentMerged.roomLocation = item.roomLocation
+                        }
+                        if (item.isPractical) {
+                            currentMerged.isPractical = true
+                        }
+                    } else {
+                        // Finalize current merged item and start new
+                        result.add(calculateClassCount(currentMerged))
+                        currentMerged = item.copy()
+                    }
+                }
+            }
+            if (currentMerged != null) {
+                result.add(calculateClassCount(currentMerged))
+            }
+        }
+        return result
+    }
+
+    private fun isSameSubject(a: ParsedTimetableItem, b: ParsedTimetableItem): Boolean {
+        val codeA = a.subjectCode.trim()
+        val codeB = b.subjectCode.trim()
+        if (codeA.isNotEmpty() && codeB.isNotEmpty() && codeA.equals(codeB, ignoreCase = true)) {
+            return true
+        }
+
+        val nameA = a.subjectName.trim()
+        val nameB = b.subjectName.trim()
+        if (nameA.isNotEmpty() && nameB.isNotEmpty() && nameA.equals(nameB, ignoreCase = true)) {
+            return true
+        }
+
+        // Check matching acronyms or code against name
+        if (codeA.isNotEmpty() && nameB.equals(codeA, ignoreCase = true)) return true
+        if (codeB.isNotEmpty() && nameA.equals(codeB, ignoreCase = true)) return true
+
+        return false
+    }
+
+    private fun calculateClassCount(item: ParsedTimetableItem): ParsedTimetableItem {
+        val startMin = parseTimeToMinutes(item.startTime)
+        val endMin = parseTimeToMinutes(item.endTime)
+        val durationMinutes = maxOf(15, endMin - startMin)
+
+        val isLab = item.isPractical ||
+                item.subjectName.contains("lab", ignoreCase = true) ||
+                item.subjectName.contains("practical", ignoreCase = true) ||
+                item.subjectName.contains("workshop", ignoreCase = true) ||
+                item.subjectCode.contains("lab", ignoreCase = true) ||
+                item.roomLocation.contains("lab", ignoreCase = true)
+
+        item.isPractical = isLab
+
+        // User Rule:
+        // Regular class: 60m == 1 count (e.g. 2 x 60m merged side-by-side = 120m == 2 counts)
+        // Practical Lab: 120m == 1 count
+        val unitMinutes = if (isLab) 120.0 else 60.0
+        val count = maxOf(1, Math.round(durationMinutes.toDouble() / unitMinutes).toInt())
+        item.attendanceUnitCount = count
+
+        return item
+    }
+
+    private fun parseTimeToMinutes(timeStr: String): Int {
+        return try {
+            val parts = timeStr.trim().split(":")
+            if (parts.size >= 2) {
+                val h = parts[0].filter { it.isDigit() }.toIntOrNull() ?: 0
+                val m = parts[1].filter { it.isDigit() }.toIntOrNull() ?: 0
+                h * 60 + m
+            } else 0
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    private fun minutesToTimeString(totalMinutes: Int): String {
+        val h = (totalMinutes / 60) % 24
+        val m = totalMinutes % 60
+        return String.format("%02d:%02d", h, m)
     }
 
     private fun resizeBitmapIfNeeded(bitmap: Bitmap, maxDimension: Int): Bitmap {
@@ -268,8 +392,10 @@ private data class ExtractedSchedulesContainer(
 private data class RawExtractedItem(
     val subjectName: String?,
     val subjectCode: String?,
+    val teacherName: String?,
     val startTime: String?,
     val endTime: String?,
     val roomLocation: String?,
-    val dayOfWeek: Int?
+    val dayOfWeek: Int?,
+    val isPractical: Boolean?
 )

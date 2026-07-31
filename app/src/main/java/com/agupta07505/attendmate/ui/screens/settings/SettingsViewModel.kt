@@ -46,6 +46,12 @@ class SettingsViewModel(
         }
     }
 
+    fun updateGeminiApiKey(apiKey: String) {
+        viewModelScope.launch {
+            preferencesRepository.updateGeminiApiKey(apiKey)
+        }
+    }
+
     fun exportBackup(context: Context, uri: Uri, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             val success = ExportImportUtils.exportDataToJson(context, repository, uri)
