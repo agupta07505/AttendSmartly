@@ -108,7 +108,7 @@ class HomeViewModel(
         viewModelScope.launch {
             val sessionId = getOrCreateSession(item)
             saveUndoState(sessionId)
-            repository.markCompleteSessionStatus(sessionId, AttendanceStatus.PRESENT)
+            repository.markOneUnitStatus(sessionId, AttendanceStatus.PRESENT)
         }
     }
 
@@ -116,7 +116,7 @@ class HomeViewModel(
         viewModelScope.launch {
             val sessionId = getOrCreateSession(item)
             saveUndoState(sessionId)
-            repository.markCompleteSessionStatus(sessionId, AttendanceStatus.ABSENT)
+            repository.markOneUnitStatus(sessionId, AttendanceStatus.ABSENT)
         }
     }
 
@@ -124,7 +124,7 @@ class HomeViewModel(
         viewModelScope.launch {
             val sessionId = getOrCreateSession(item)
             saveUndoState(sessionId)
-            repository.markCompleteSessionStatus(sessionId, AttendanceStatus.BUNKED)
+            repository.markOneUnitStatus(sessionId, AttendanceStatus.BUNKED)
         }
     }
 
@@ -132,7 +132,7 @@ class HomeViewModel(
         viewModelScope.launch {
             val sessionId = getOrCreateSession(item)
             saveUndoState(sessionId)
-            repository.markCompleteSessionStatus(sessionId, AttendanceStatus.CANCELLED)
+            repository.markOneUnitStatus(sessionId, AttendanceStatus.CANCELLED)
         }
     }
 

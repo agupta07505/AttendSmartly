@@ -36,7 +36,7 @@ fun ClassCard(
     onMarkBunked: () -> Unit = {},
     onMarkCancelled: () -> Unit = {},
     onResetSession: () -> Unit = {},
-    onMoreOptions: () -> Unit,
+    onMoreOptions: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val subjectColor = Color(subject.colorValue.toInt())
@@ -146,7 +146,7 @@ fun ClassCard(
                 ) {
                     // Segmented pills for units
                     if (units.isNotEmpty()) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             units.forEach { unit ->
                                 val status = try {
                                     AttendanceStatus.valueOf(unit.status)
@@ -162,8 +162,8 @@ fun ClassCard(
                                 }
                                 Box(
                                     modifier = Modifier
-                                        .width(32.dp)
-                                        .height(8.dp)
+                                        .width(28.dp)
+                                        .height(7.dp)
                                         .clip(CircleShape)
                                         .background(pillColor)
                                 )
@@ -178,121 +178,132 @@ fun ClassCard(
                     )
                 }
 
-                TextButton(
-                    onClick = onMoreOptions,
-                    contentPadding = PaddingValues(0.dp)
-                ) {
-                    Text(
-                        text = "Edit Units",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                if (isMarked) {
+                    TextButton(
+                        onClick = onResetSession,
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                        modifier = Modifier.height(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Clear Status",
+                            modifier = Modifier.size(13.dp),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = "Clear",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
 
-            // Quick Status Actions Grid: Present, Absent, Bunked, Cancelled + Reset
-            Column(
+            // Quick Status Actions Row: Present, Absent, Bunked, Cancelled
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                // Present
+                Button(
+                    onClick = onMarkPresent,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                        .testTag("btn_present_${timetableEntry.id}"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (presentCount == expectedUnits) com.agupta07505.attendmate.ui.theme.StatusPresent else MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = if (presentCount == expectedUnits) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp)
                 ) {
-                    // Present
-                    Button(
-                        onClick = onMarkPresent,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(42.dp)
-                            .testTag("btn_present_${timetableEntry.id}"),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (presentCount == expectedUnits) com.agupta07505.attendmate.ui.theme.StatusPresent else MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = if (presentCount == expectedUnits) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 4.dp)
-                    ) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Present", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-
-                    // Absent
-                    Button(
-                        onClick = onMarkAbsent,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(42.dp)
-                            .testTag("btn_absent_${timetableEntry.id}"),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (absentCount == expectedUnits) com.agupta07505.attendmate.ui.theme.StatusAbsent else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (absentCount == expectedUnits) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 4.dp)
-                    ) {
-                        Icon(Icons.Default.Cancel, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Absent", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-
-                    // Bunked
-                    Button(
-                        onClick = onMarkBunked,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(42.dp)
-                            .testTag("btn_bunked_${timetableEntry.id}"),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (bunkedCount == expectedUnits) com.agupta07505.attendmate.ui.theme.StatusAbsent.copy(alpha = 0.8f) else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (bunkedCount == expectedUnits) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 4.dp)
-                    ) {
-                        Icon(Icons.Default.DirectionsRun, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Bunked", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-
-                    // Cancelled
-                    Button(
-                        onClick = onMarkCancelled,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(42.dp)
-                            .testTag("btn_cancelled_${timetableEntry.id}"),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (cancelledCount == expectedUnits) com.agupta07505.attendmate.ui.theme.StatusCancelled else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (cancelledCount == expectedUnits) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 4.dp)
-                    ) {
-                        Icon(Icons.Default.Block, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Cancelled", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                        text = "Present",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
+                    )
                 }
 
-                if (isMarked) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(
-                            onClick = onResetSession,
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                            modifier = Modifier.height(30.dp)
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Reset Status", modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Reset / Clear", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
-                        }
-                    }
+                // Absent
+                Button(
+                    onClick = onMarkAbsent,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                        .testTag("btn_absent_${timetableEntry.id}"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (absentCount == expectedUnits) com.agupta07505.attendmate.ui.theme.StatusAbsent else MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (absentCount == expectedUnits) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp)
+                ) {
+                    Icon(Icons.Default.Cancel, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                        text = "Absent",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+
+                // Bunked
+                Button(
+                    onClick = onMarkBunked,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                        .testTag("btn_bunked_${timetableEntry.id}"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (bunkedCount == expectedUnits) com.agupta07505.attendmate.ui.theme.StatusAbsent.copy(alpha = 0.8f) else MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (bunkedCount == expectedUnits) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp)
+                ) {
+                    Icon(Icons.Default.DirectionsRun, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                        text = "Bunked",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+
+                // Cancelled
+                Button(
+                    onClick = onMarkCancelled,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                        .testTag("btn_cancelled_${timetableEntry.id}"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (cancelledCount == expectedUnits) com.agupta07505.attendmate.ui.theme.StatusCancelled else MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (cancelledCount == expectedUnits) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp)
+                ) {
+                    Icon(Icons.Default.Block, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                        text = "Cancelled",
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
+                    )
                 }
             }
         }

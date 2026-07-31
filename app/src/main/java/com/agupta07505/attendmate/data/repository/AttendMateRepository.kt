@@ -70,6 +70,32 @@ class AttendMateRepository(
         )
     }
 
+    suspend fun markOneUnitStatus(
+        sessionId: Long,
+        status: AttendanceStatus
+    ) {
+        val units = attendanceDao.getUnitsForSession(sessionId)
+        val unmarked = units.firstOrNull { it.status == AttendanceStatus.UNMARKED.name }
+        if (unmarked != null) {
+            attendanceDao.updateUnit(
+                unmarked.copy(
+                    status = status.name,
+                    updatedAt = System.currentTimeMillis()
+                )
+            )
+            return
+        }
+        val firstDifferent = units.firstOrNull { it.status != status.name }
+        if (firstDifferent != null) {
+            attendanceDao.updateUnit(
+                firstDifferent.copy(
+                    status = status.name,
+                    updatedAt = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
     suspend fun markNextUnitStatus(
         sessionId: Long,
         status: AttendanceStatus

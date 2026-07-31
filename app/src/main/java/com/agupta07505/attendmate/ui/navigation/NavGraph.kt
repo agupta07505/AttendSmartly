@@ -1,5 +1,9 @@
 package com.agupta07505.attendmate.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,7 +31,6 @@ import com.agupta07505.attendmate.ui.screens.subjects.SubjectsScreen
 import com.agupta07505.attendmate.ui.screens.subjects.SubjectsViewModel
 import com.agupta07505.attendmate.ui.screens.timetable.TimetableScreen
 import com.agupta07505.attendmate.ui.screens.timetable.TimetableViewModel
-import kotlinx.coroutines.launch
 
 @Composable
 fun NavGraph(
@@ -39,8 +42,10 @@ fun NavGraph(
     val currentRoute = navBackStackEntry?.destination?.route
 
     val showBottomBar = currentRoute in Screen.bottomNavItems.map { it.route }
+    val initialRoute = remember { if (!userPreferences.onboardingCompleted) Screen.Onboarding.route else Screen.Home.route }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
@@ -49,12 +54,14 @@ fun NavGraph(
                         NavigationBarItem(
                             selected = selected,
                             onClick = {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                                if (currentRoute != screen.route) {
+                                    navController.navigate(screen.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
                                 }
                             },
                             icon = {
@@ -70,8 +77,12 @@ fun NavGraph(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = if (!userPreferences.onboardingCompleted) Screen.Onboarding.route else Screen.Home.route,
-            modifier = Modifier.padding(innerPadding)
+            startDestination = initialRoute,
+            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
+            enterTransition = { fadeIn(animationSpec = tween(150)) },
+            exitTransition = { fadeOut(animationSpec = tween(150)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(150)) },
+            popExitTransition = { fadeOut(animationSpec = tween(150)) }
         ) {
             composable(Screen.Onboarding.route) {
                 OnboardingScreen(

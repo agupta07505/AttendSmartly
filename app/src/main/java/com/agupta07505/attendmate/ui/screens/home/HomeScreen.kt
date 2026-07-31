@@ -281,7 +281,10 @@ fun HomeScreen(
                         }
                     }
                 } else {
-                    items(todaySchedules) { item ->
+                    items(
+                        items = todaySchedules,
+                        key = { it.timetableEntry.id }
+                    ) { item ->
                         ClassCard(
                             timetableEntry = item.timetableEntry,
                             subject = item.subject,
