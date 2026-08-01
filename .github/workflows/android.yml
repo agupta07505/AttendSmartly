@@ -25,7 +25,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 permissions:
-  contents: read
+  contents: write
 
 defaults:
   run:
@@ -103,10 +103,21 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew --no-daemon assembleRelease
 
-      - name: Upload Release APK
+      - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v5
         with:
           name: AttendSmartly-Release-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/*.apk
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v1.0.0' }}
+          name: AttendSmartly ${{ github.ref_type == 'tag' && github.ref_name || 'v1.0.0' }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
