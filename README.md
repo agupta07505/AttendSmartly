@@ -80,21 +80,21 @@ College academic rules often demand a mandatory minimum attendance threshold (e.
 AttendSmartly uses precise mathematical formulas to compute attendance metrics:
 
 ### Overall Attendance Percentage
-\[
+$$
 \text{Attendance \%} = \left( \frac{\text{Units Attended (Present)}}{\text{Total Conducted Units (Present + Absent)}} \right) \times 100
-\]
+$$
 
 ### Safe Bunks Formula
-*How many upcoming classes can you skip before dropping below target threshold \( T \)?*
-\[
-\text{Safe Bunks} = \left\lfloor \frac{P - (T \times Total)}{T} \right\rfloor
-\]
+*How many upcoming classes can you skip before dropping below target threshold $T$?*
+$$
+\text{Safe Bunks} = \left\lfloor \frac{P - (T \times \text{Total})}{T} \right\rfloor
+$$
 
 ### Recovery Classes Formula
-*How many consecutive classes must you attend to reach target threshold \( T \)?*
-\[
-\text{Required Classes} = \left\lceil \frac{(T \times Total) - P}{1 - T} \right\rceil
-\]
+*How many consecutive classes must you attend to reach target threshold $T$?*
+$$
+\text{Required Classes} = \left\lceil \frac{(T \times \text{Total}) - P}{1 - T} \right\rceil
+$$
 
 *Cancelled classes are automatically excluded from conducted totals so your percentage remains accurate.*
 
