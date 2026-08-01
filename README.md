@@ -2,6 +2,8 @@
 
 <div align="center">
 
+<img src="helper/AttendSmartly.png" alt="AttendSmartly Logo" width="150" height="150" />
+
 [![License: GPL v3](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple.svg?logo=kotlin)](https://kotlinlang.org/)
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%26%20M3-4285F4.svg?logo=android)](https://developer.android.com/jetpack/compose)
@@ -107,6 +109,29 @@ AttendSmartly uses precise mathematical formulas to compute attendance metrics:
 - **Background Operations**: WorkManager & AlarmManager
 - **Navigation**: Type-safe Navigation Compose
 - **Data Export**: Gson (JSON) & OpenCSV (CSV) via Storage Access Framework (SAF)
+
+---
+
+## 📱 Screenshots
+
+<div align="center">
+  <img src="assets/screenshots/home_dashboard.jpg" width="200"/>
+  <img src="assets/screenshots/weekly_timetable.jpg" width="200"/>
+  <img src="assets/screenshots/mark_past_attendance.jpg" width="200"/>
+  <img src="assets/screenshots/subjects_list.jpg" width="200"/>
+  <br/>
+  <img src="assets/screenshots/subject_details.jpg" width="200"/>
+  <img src="assets/screenshots/attendance_analytics.jpg" width="200"/>
+  <img src="assets/screenshots/subject_wise_progress.jpg" width="200"/>
+  <img src="assets/screenshots/settings_top.jpg" width="200"/>
+  <br/>
+  <img src="assets/screenshots/settings_bottom.jpg" width="200"/>
+  <img src="assets/screenshots/date_picker.jpg" width="200"/>
+  <img src="assets/screenshots/add_new_subject.jpg" width="200"/>
+  <img src="assets/screenshots/ai_timetable_scanner.jpg" width="200"/>
+  <br/>
+  <img src="assets/screenshots/review_extracted_schedule.jpg" width="200"/>
+</div>
 
 ---
 
