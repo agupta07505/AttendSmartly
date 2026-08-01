@@ -23,14 +23,15 @@ android {
   }
 
   signingConfigs {
-    create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/AttendSmartly.jks"
-      val keystoreFile = file(keystorePath)
-      if (keystoreFile.exists()) {
+    val storePass = System.getenv("STORE_PASSWORD")
+    val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/AttendSmartly.jks"
+    val keystoreFile = file(keystorePath)
+    if (keystoreFile.exists() && !storePass.isNullOrBlank()) {
+      create("release") {
         storeFile = keystoreFile
-        storePassword = System.getenv("STORE_PASSWORD")
+        storePassword = storePass
         keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
-        keyPassword = System.getenv("KEY_PASSWORD") ?: System.getenv("STORE_PASSWORD")
+        keyPassword = System.getenv("KEY_PASSWORD") ?: storePass
       }
     }
     val debugKeystoreFile = file("${rootDir}/debug.keystore")
@@ -50,7 +51,7 @@ android {
       isMinifyEnabled = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       val releaseConfig = signingConfigs.findByName("release")
-      if (releaseConfig?.storeFile?.exists() == true) {
+      if (releaseConfig != null) {
         signingConfig = releaseConfig
       }
     }
