@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability Reporting
+    url: https://github.com/agupta07505/AttendSmartly/blob/main/SECURITY.md
+    about: Please report security vulnerabilities confidentially per our Security Policy.
+  - name: Documentation & Usage Questions
+    url: https://github.com/agupta07505/AttendSmartly/blob/main/README.md
+    about: Read our documentation for setup, architecture, and feature details.
