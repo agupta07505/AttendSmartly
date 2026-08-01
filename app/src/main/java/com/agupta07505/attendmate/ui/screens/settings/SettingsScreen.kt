@@ -17,11 +17,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.agupta07505.attendmate.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -331,11 +333,123 @@ fun SettingsScreen(
                 }
             }
 
+            // Developer Contact Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Contact Developer",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // GitHub
+                        FilledTonalButton(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505"))
+                                try { context.startActivity(intent) } catch (_: Exception) {}
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("settings_github_btn"),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(vertical = 12.dp, horizontal = 8.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_github),
+                                contentDescription = "GitHub",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("GitHub", fontWeight = FontWeight.SemiBold)
+                        }
+
+                        // LinkedIn
+                        FilledTonalButton(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.linkedin.com/in/agupta07505"))
+                                try { context.startActivity(intent) } catch (_: Exception) {}
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("settings_linkedin_btn"),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(vertical = 12.dp, horizontal = 8.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_linkedin),
+                                contentDescription = "LinkedIn",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("LinkedIn", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Instagram
+                        FilledTonalButton(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.instagram.com/agupta07505"))
+                                try { context.startActivity(intent) } catch (_: Exception) {}
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("settings_instagram_btn"),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(vertical = 12.dp, horizontal = 8.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_instagram),
+                                contentDescription = "Instagram",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Instagram", fontWeight = FontWeight.SemiBold)
+                        }
+
+                        // Email
+                        FilledTonalButton(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:agupta.07505@gmail.com"))
+                                try { context.startActivity(intent) } catch (_: Exception) {}
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("settings_email_btn"),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(vertical = 12.dp, horizontal = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Email,
+                                contentDescription = "Email",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Email", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+
             // Developer Footer Branding
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp),
+                    .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
