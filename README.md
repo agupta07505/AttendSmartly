@@ -5,6 +5,7 @@
 <img src="helper/AttendSmartly.png" alt="AttendSmartly Logo" width="150" height="150" />
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
+[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/agupta07505/AttendSmartly/total?style=flat-square&color=success&logo=github)](https://github.com/agupta07505/AttendSmartly/releases)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple.svg?logo=kotlin)](https://kotlinlang.org/)
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%26%20M3-4285F4.svg?logo=android)](https://developer.android.com/jetpack/compose)
 [![Min API](https://img.shields.io/badge/API-24%2B%20(Android%207.0%2B)-brightgreen.svg?logo=android)](https://android.com)
