@@ -9,7 +9,7 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
-        android:name=".AttendMateApplication"
+        android:name=".AttendSmartlyApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -45,9 +45,9 @@
             android:enabled="true"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.agupta07505.attendmate.ACTION_MARK_PRESENT" />
-                <action android:name="com.agupta07505.attendmate.ACTION_MARK_ABSENT" />
-                <action android:name="com.agupta07505.attendmate.ACTION_TRIGGER_REMINDER" />
+                <action android:name="com.agupta07505.attendsmartly.ACTION_MARK_PRESENT" />
+                <action android:name="com.agupta07505.attendsmartly.ACTION_MARK_ABSENT" />
+                <action android:name="com.agupta07505.attendsmartly.ACTION_TRIGGER_REMINDER" />
             </intent-filter>
         </receiver>
     </application>

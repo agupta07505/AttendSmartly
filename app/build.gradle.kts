@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-  namespace = "com.agupta07505.attendmate"
+  namespace = "com.agupta07505.attendsmartly"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.agupta07505.attendmate"
+    applicationId = "com.agupta07505.attendsmartly"
     minSdk = 24
     targetSdk = 36
     versionCode = 1

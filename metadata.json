@@ -1,6 +1,6 @@
 {
-  "name": "AttendMate",
-  "description": "Smart college attendance tracking app with custom unit counts, timetable builder, safe bunk calculator, and class reminders.",
+  "name": "AttendSmartly - Attendance Tracker",
+  "description": "Track classes. Plan bunks. Attend smartly. Smart college attendance tracking app with custom unit counts, timetable builder, safe bunk calculator, and class reminders.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

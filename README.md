@@ -1,6 +1,8 @@
-# AttendMate — College Attendance Tracker
+# AttendSmartly - Attendance Tracker
 
-**AttendMate** is a clean, modern, student-focused Android attendance-tracking application built natively with **Kotlin**, **Jetpack Compose**, **Material Design 3**, and **Room Database**.
+> **Track classes. Plan bunks. Attend smartly.**
+
+**AttendSmartly** is a clean, modern, student-focused Android attendance-tracking application built natively with **Kotlin**, **Jetpack Compose**, **Material Design 3**, and **Room Database**.
 
 It helps college students track lectures, tutorials, and multi-hour practical lab sessions, configure customizable attendance rules, schedule weekly timetables, receive class reminders, and instantly calculate safe bunks or required consecutive classes to maintain their target attendance percentage.
 
@@ -49,6 +51,8 @@ It helps college students track lectures, tutorials, and multi-hour practical la
 
 ---
 
-## License
+## Author & License
 
-Designed and developed for college students. Free & Open Source.
+Designed and developed by **Animesh Gupta** ([@agupta07505](https://github.com/agupta07505)).
+
+Free & Open Source.

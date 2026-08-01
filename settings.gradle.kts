@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "AttendMate"
+rootProject.name = "AttendSmartly"
 
 include(":app")
