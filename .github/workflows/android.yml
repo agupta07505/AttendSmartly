@@ -51,6 +51,15 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x ./gradlew
 
+      - name: Ensure environment files exist for Secrets plugin
+        run: |
+          if [ ! -f .env.example ]; then
+            echo "GEMINI_API_KEY=MY_GEMINI_API_KEY" > .env.example
+          fi
+          if [ ! -f .env ]; then
+            echo "GEMINI_API_KEY=MY_GEMINI_API_KEY" > .env
+          fi
+
       - name: Run lint, unit tests, and assemble debug APK
         run: ./gradlew --no-daemon --stacktrace testDebugUnitTest assembleDebug
 
@@ -86,6 +95,15 @@ jobs:
 
       - name: Make Gradle executable
         run: chmod +x ./gradlew
+
+      - name: Ensure environment files exist for Secrets plugin
+        run: |
+          if [ ! -f .env.example ]; then
+            echo "GEMINI_API_KEY=MY_GEMINI_API_KEY" > .env.example
+          fi
+          if [ ! -f .env ]; then
+            echo "GEMINI_API_KEY=MY_GEMINI_API_KEY" > .env
+          fi
 
       - name: Build Release APK
         run: ./gradlew --no-daemon assembleRelease
