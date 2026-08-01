@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -96,7 +96,7 @@ object NotificationHelper {
         val contentText = "$subjectName$locationInfo$teacherInfo ($durationMinutes mins • $unitCount ${if (unitCount == 1) "unit" else "units"}) $timeMessage."
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Upcoming Class: $subjectName")
             .setContentText(contentText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))

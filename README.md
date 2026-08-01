@@ -126,7 +126,7 @@ AttendSmartly uses precise mathematical formulas to compute attendance metrics:
   <img src="assets/screenshots/settings_top.jpg" width="200"/>
   <br/>
   <img src="assets/screenshots/settings_bottom.jpg" width="200"/>
-  <img src="assets/screenshots/date_picker.jpg" width="200"/>
+  <!-- <img src="assets/screenshots/date_picker.jpg" width="200"/> -->
   <img src="assets/screenshots/add_new_subject.jpg" width="200"/>
   <img src="assets/screenshots/ai_timetable_scanner.jpg" width="200"/>
   <br/>
