@@ -23,15 +23,18 @@ android {
   }
 
   signingConfigs {
-    val storePass = System.getenv("STORE_PASSWORD")
-    val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/AttendSmartly.jks"
+    val storePass = System.getenv("STORE_PASSWORD")?.takeIf { it.isNotBlank() }
+    val keystorePath = System.getenv("KEYSTORE_PATH")?.takeIf { it.isNotBlank() } ?: "${rootDir}/AttendSmartly.jks"
     val keystoreFile = file(keystorePath)
+    val aliasEnv = System.getenv("KEY_ALIAS")?.takeIf { it.isNotBlank() } ?: "upload"
+    val keyPassEnv = System.getenv("KEY_PASSWORD")?.takeIf { it.isNotBlank() } ?: storePass
+
     if (keystoreFile.exists() && !storePass.isNullOrBlank()) {
       create("release") {
         storeFile = keystoreFile
         storePassword = storePass
-        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
-        keyPassword = System.getenv("KEY_PASSWORD") ?: storePass
+        keyAlias = aliasEnv
+        keyPassword = keyPassEnv ?: ""
       }
     }
     val debugKeystoreFile = file("${rootDir}/debug.keystore")
@@ -53,6 +56,8 @@ android {
       val releaseConfig = signingConfigs.findByName("release")
       if (releaseConfig != null) {
         signingConfig = releaseConfig
+      } else {
+        signingConfig = signingConfigs.getByName("debug")
       }
     }
     debug {
