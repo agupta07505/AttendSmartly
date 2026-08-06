@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -37,9 +37,8 @@ class AttendanceCalculatorTest {
         assertEquals(10, summary.totalConductedUnits)
         assertEquals(8, summary.presentUnits)
         assertEquals(80.0, summary.percentage, 0.01)
-        // Safe bunks formula: floor((8 - 0.75 * 10) / 0.75) = floor(0.5 / 0.75) = 0
-        // Wait: floor((8 - 7.5)/0.75) = 0.
-        // Let's test with 9 Present out of 10 Conducted = 90% (Target 75%)
+
+        // 9 Present out of 10 Conducted = 90% (Target 75%)
         val statuses2 = listOf(
             AttendanceStatus.PRESENT, AttendanceStatus.PRESENT, AttendanceStatus.PRESENT, AttendanceStatus.PRESENT,
             AttendanceStatus.PRESENT, AttendanceStatus.PRESENT, AttendanceStatus.PRESENT, AttendanceStatus.PRESENT,
@@ -49,8 +48,15 @@ class AttendanceCalculatorTest {
         assertEquals(10, summary2.totalConductedUnits)
         assertEquals(9, summary2.presentUnits)
         assertEquals(90.0, summary2.percentage, 0.01)
-        // floor((9 - 0.75 * 10) / 0.75) = floor(1.5 / 0.75) = 2 safe bunks!
         assertEquals(2, summary2.safeBunks)
+    }
+
+    @Test
+    fun testPrecisionSafeBunks() {
+        // 14 Present out of 19 Conducted = 73.68% (Target 70%)
+        // If 1 miss: 14 / 20 = 70.0% >= 70% -> Exactly 1 safe bunk!
+        val summary = AttendanceCalculator.calculate(presentUnits = 14, absentUnits = 5, targetPercentage = 70.0)
+        assertEquals(1, summary.safeBunks)
     }
 
     @Test
@@ -61,7 +67,6 @@ class AttendanceCalculatorTest {
         assertEquals(10, summary.totalConductedUnits)
         assertEquals(5, summary.presentUnits)
         assertEquals(50.0, summary.percentage, 0.01)
-        // Required formula: ceil((0.75 * 10 - 5) / (1 - 0.75)) = ceil((7.5 - 5) / 0.25) = ceil(2.5 / 0.25) = 10 classes
         assertEquals(10, summary.requiredUnitsToTarget)
     }
 

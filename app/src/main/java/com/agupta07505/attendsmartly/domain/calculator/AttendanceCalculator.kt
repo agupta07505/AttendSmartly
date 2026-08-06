@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -59,32 +59,32 @@ object AttendanceCalculator {
         targetPercentage: Double = 75.0
     ): AttendanceSummary {
         val safeTarget = targetPercentage.coerceIn(1.0, 100.0)
-        val R = safeTarget / 100.0
         val P = presentUnits.toDouble()
         val A = absentUnits.toDouble()
         val T = P + A // Total conducted units excluding cancelled
 
         val currentPercentage = if (T > 0) (P / T) * 100.0 else 0.0
 
+        // Exact safe bunks calculation with epsilon precision tolerance
         val safeBunks: Int = if (T > 0 && P > 0) {
-            val calc = floor((P / R) - T)
+            val calc = floor(((100.0 * P - safeTarget * T) / safeTarget) + 1e-9)
             if (calc > 0 && !calc.isNaN() && !calc.isInfinite()) calc.toInt() else 0
         } else {
             0
         }
 
+        // Exact required classes calculation with epsilon precision tolerance
         val requiredUnits: Int = if (T == 0.0) {
             0
-        } else if (currentPercentage >= safeTarget) {
+        } else if (currentPercentage >= safeTarget - 1e-9) {
             0
         } else {
-            if (R >= 1.0) {
-                // If target is 100% and absentUnits > 0, mathematically impossible
+            if (safeTarget >= 100.0) {
                 if (absentUnits > 0) Int.MAX_VALUE else 0
             } else {
-                val num = (R * T) - P
-                val den = 1.0 - R
-                val calc = ceil(num / den)
+                val num = (safeTarget * T) - (100.0 * P)
+                val den = 100.0 - safeTarget
+                val calc = ceil((num / den) - 1e-9)
                 if (calc > 0 && !calc.isNaN() && !calc.isInfinite()) calc.toInt() else 0
             }
         }
@@ -142,14 +142,14 @@ object AttendanceCalculator {
         
         return when {
             requiredUnits == Int.MAX_VALUE -> "Target is 100%. Cannot reach target after an absence."
-            currentPercentage < targetPercentage -> {
+            currentPercentage < targetPercentage - 1e-9 -> {
                 "Attend the next $requiredUnits ${if (requiredUnits == 1) "unit" else "units"} to reach $roundedTarget%."
             }
             safeBunks > 0 -> {
                 "You can safely miss $safeBunks ${if (safeBunks == 1) "attendance unit" else "attendance units"} and remain above $roundedTarget%."
             }
             else -> {
-                "You are exactly at your target. Avoid missing the next class."
+                "You are on the margin of your $roundedTarget% target. Avoid missing the next class."
             }
         }
     }

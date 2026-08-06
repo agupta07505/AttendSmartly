@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -143,7 +143,11 @@ fun AttendanceProgressCard(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = if (isAboveTarget) "Classes can be missed" else "Consecutive to attend",
+                            text = if (isAboveTarget) {
+                                if (summary.safeBunks > 0) "Classes can be missed" else "At target limit (0 bunks left)"
+                            } else {
+                                "Consecutive to attend"
+                            },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1

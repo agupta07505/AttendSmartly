@@ -54,6 +54,14 @@ fun SettingsScreen(
     var showClearDataConfirm by remember { mutableStateOf(false) }
     var showDemoConfirm by remember { mutableStateOf(false) }
 
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.updateNotificationsEnabled(true)
+        }
+    }
+
     // SAF Activity Launchers
     val exportBackupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -164,9 +172,24 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+
                         Switch(
                             checked = prefs.notificationsEnabled,
-                            onCheckedChange = { viewModel.updateNotificationsEnabled(it) },
+                            onCheckedChange = { enabled ->
+                                if (enabled && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                                    if (androidx.core.content.ContextCompat.checkSelfPermission(
+                                            context,
+                                            android.Manifest.permission.POST_NOTIFICATIONS
+                                        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                                    ) {
+                                        notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                    } else {
+                                        viewModel.updateNotificationsEnabled(true)
+                                    }
+                                } else {
+                                    viewModel.updateNotificationsEnabled(enabled)
+                                }
+                            },
                             modifier = Modifier.testTag("settings_notifications_switch")
                         )
                     }
