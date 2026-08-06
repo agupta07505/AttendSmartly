@@ -13,6 +13,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.agupta07505.attendsmartly.MainActivity
@@ -95,8 +96,19 @@ object NotificationHelper {
         
         val contentText = "$subjectName$locationInfo$teacherInfo ($durationMinutes mins • $unitCount ${if (unitCount == 1) "unit" else "units"}) $timeMessage."
 
+        val appIconLarge = try {
+            BitmapFactory.decodeResource(context.resources, R.mipmap.ic_launcher)
+        } catch (_: Exception) {
+            null
+        }
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
+            .apply {
+                if (appIconLarge != null) {
+                    setLargeIcon(appIconLarge)
+                }
+            }
             .setContentTitle("Upcoming Class: $subjectName")
             .setContentText(contentText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
