@@ -140,6 +140,67 @@ fun SettingsScreen(
                 }
             }
 
+            // Notifications Settings Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Notifications", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Class Reminder Notifications", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "Receive notifications before scheduled classes",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = prefs.notificationsEnabled,
+                            onCheckedChange = { viewModel.updateNotificationsEnabled(it) },
+                            modifier = Modifier.testTag("settings_notifications_switch")
+                        )
+                    }
+
+                    if (prefs.notificationsEnabled) {
+                        HorizontalDivider()
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Notification Sound")
+                            Switch(
+                                checked = prefs.notificationSound,
+                                onCheckedChange = { viewModel.updateNotificationSound(it) }
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Notification Vibration")
+                            Switch(
+                                checked = prefs.notificationVibrate,
+                                onCheckedChange = { viewModel.updateNotificationVibrate(it) }
+                            )
+                        }
+                    }
+                }
+            }
+
             // Theme Options
             Card(
                 modifier = Modifier.fillMaxWidth(),

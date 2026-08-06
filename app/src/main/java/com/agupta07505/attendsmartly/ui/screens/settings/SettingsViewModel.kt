@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -28,6 +28,24 @@ class SettingsViewModel(
 
     val userPreferences: StateFlow<UserPreferences> = preferencesRepository.userPreferencesFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, UserPreferences())
+
+    fun updateNotificationsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.updateNotificationsEnabled(enabled)
+        }
+    }
+
+    fun updateNotificationSound(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.updateNotificationSound(enabled)
+        }
+    }
+
+    fun updateNotificationVibrate(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.updateNotificationVibrate(enabled)
+        }
+    }
 
     fun updateDefaultTargetAttendance(target: Double) {
         viewModelScope.launch {

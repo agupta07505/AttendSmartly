@@ -110,13 +110,29 @@ object NotificationHelper {
         manager.notify(notificationId, builder.build())
     }
 
-    fun scheduleAlarm(context: Context, triggerAtMillis: Long, sessionId: Long, subjectName: String, startTime: String) {
+    fun scheduleAlarm(
+        context: Context,
+        triggerAtMillis: Long,
+        sessionId: Long,
+        subjectName: String,
+        startTime: String,
+        room: String = "",
+        teacher: String = "",
+        durationMinutes: Int = 60,
+        unitCount: Int = 1,
+        minutesBefore: Int = 10
+    ) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, ReminderNotificationReceiver::class.java).apply {
             action = ReminderNotificationReceiver.ACTION_TRIGGER_REMINDER
             putExtra(ReminderNotificationReceiver.EXTRA_SESSION_ID, sessionId)
             putExtra(ReminderNotificationReceiver.EXTRA_SUBJECT_NAME, subjectName)
             putExtra(ReminderNotificationReceiver.EXTRA_START_TIME, startTime)
+            putExtra(ReminderNotificationReceiver.EXTRA_ROOM, room)
+            putExtra(ReminderNotificationReceiver.EXTRA_TEACHER, teacher)
+            putExtra(ReminderNotificationReceiver.EXTRA_DURATION, durationMinutes)
+            putExtra(ReminderNotificationReceiver.EXTRA_UNIT_COUNT, unitCount)
+            putExtra(ReminderNotificationReceiver.EXTRA_MINUTES_BEFORE, minutesBefore)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
