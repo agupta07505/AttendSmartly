@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -13,7 +13,10 @@ import com.agupta07505.attendsmartly.AttendSmartlyApplication
 import com.agupta07505.attendsmartly.notification.NotificationHelper
 import com.agupta07505.attendsmartly.util.DateUtils
 import kotlinx.coroutines.flow.first
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
 class ReminderWorker(
@@ -25,11 +28,19 @@ class ReminderWorker(
         return try {
             val app = context.applicationContext as AttendSmartlyApplication
             val repository = app.repository
+            val prefsRepo = app.userPreferencesRepository
+            val userPrefs = prefsRepo.userPreferencesFlow.first()
+
+            if (!userPrefs.notificationsEnabled) {
+                return Result.success()
+            }
+
             val todayIso = DateUtils.todayIso()
             val dayOfWeek = DateUtils.getDayOfWeekInt(todayIso)
 
             val activeTimetable = repository.getTimetableForDay(dayOfWeek).first()
             val now = LocalTime.now()
+            val today = LocalDate.now()
 
             for (entry in activeTimetable) {
                 val subject = repository.getSubjectById(entry.subjectId) ?: continue
@@ -39,32 +50,54 @@ class ReminderWorker(
                     entry.reminderMinutes
                 } else if (subject.defaultReminderMinutes > 0) {
                     subject.defaultReminderMinutes
+                } else if (userPrefs.defaultReminderMinutes > 0) {
+                    userPrefs.defaultReminderMinutes
                 } else {
-                    0
+                    10
                 }
 
                 if (reminderMins <= 0) continue
 
                 val classStartTime = LocalTime.parse(entry.startTime, DateUtils.timeFormatter24)
                 val reminderTime = classStartTime.minusMinutes(reminderMins.toLong())
+                val durationMins = DateUtils.calculateDurationMinutes(entry.startTime, entry.endTime)
+                val room = if (entry.roomOverride.isNotBlank()) entry.roomOverride else subject.room
+                val teacher = if (entry.teacherOverride.isNotBlank()) entry.teacherOverride else subject.teacherName
 
-                // Check if we are within 15 minutes of the reminder time
-                val diffMinutes = java.time.Duration.between(now, reminderTime).toMinutes()
-                if (diffMinutes in 0..15) {
-                    val durationMins = DateUtils.calculateDurationMinutes(entry.startTime, entry.endTime)
-                    
-                    NotificationHelper.showClassReminderNotification(
+                if (now.isBefore(reminderTime)) {
+                    // Schedule exact alarm for reminderTime
+                    val reminderDateTime = LocalDateTime.of(today, reminderTime)
+                    val triggerAtMillis = reminderDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+                    NotificationHelper.scheduleAlarm(
                         context = context,
-                        notificationId = entry.id.toInt(),
+                        triggerAtMillis = triggerAtMillis,
                         sessionId = entry.id,
                         subjectName = subject.name,
                         startTime = DateUtils.formatTime(entry.startTime),
-                        room = if (entry.roomOverride.isNotBlank()) entry.roomOverride else subject.room,
-                        teacher = if (entry.teacherOverride.isNotBlank()) entry.teacherOverride else subject.teacherName,
+                        room = room,
+                        teacher = teacher,
                         durationMinutes = durationMins,
                         unitCount = entry.attendanceUnitCount,
                         minutesBefore = reminderMins
                     )
+                } else if (!now.isBefore(reminderTime) && now.isBefore(classStartTime)) {
+                    // Fallback: If now is within 0..2 minutes past reminderTime, show notification directly
+                    val minutesPastReminder = java.time.Duration.between(reminderTime, now).toMinutes()
+                    if (minutesPastReminder in 0..2) {
+                        NotificationHelper.showClassReminderNotification(
+                            context = context,
+                            notificationId = entry.id.toInt(),
+                            sessionId = entry.id,
+                            subjectName = subject.name,
+                            startTime = DateUtils.formatTime(entry.startTime),
+                            room = room,
+                            teacher = teacher,
+                            durationMinutes = durationMins,
+                            unitCount = entry.attendanceUnitCount,
+                            minutesBefore = reminderMins
+                        )
+                    }
                 }
             }
             Result.success()

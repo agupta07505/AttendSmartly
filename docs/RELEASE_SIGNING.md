@@ -68,5 +68,5 @@ This generates `AttendSmartly_base64.txt` containing a single line of Base64 tex
 
 ## 🚀 5. Triggering a Signed Release Build
 
-- **Automated Tag Release**: Push a Git tag starting with `v` (e.g., `git tag v1.0.0 && git push origin v1.0.0`).
+- **Automated Tag Release**: Push a Git tag starting with `v` (e.g., `git tag v1.1.0 && git push origin v1.1.0`).
 - **Manual Build**: Go to **Actions** -> **Build Android APK** -> **Run workflow**.

@@ -6,6 +6,7 @@ Only the latest release of **AttendSmartly** receives active security updates an
 
 | Version | Supported          |
 | ------- | ------------------ |
+| 1.1.x   | :white_check_mark: |
 | 1.0.x   | :white_check_mark: |
 
 ---

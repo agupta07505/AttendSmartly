@@ -54,6 +54,14 @@ fun SettingsScreen(
     var showClearDataConfirm by remember { mutableStateOf(false) }
     var showDemoConfirm by remember { mutableStateOf(false) }
 
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.updateNotificationsEnabled(true)
+        }
+    }
+
     // SAF Activity Launchers
     val exportBackupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -137,6 +145,82 @@ fun SettingsScreen(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().testTag("settings_reminder_input")
                     )
+                }
+            }
+
+            // Notifications Settings Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Notifications", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Class Reminder Notifications", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "Receive notifications before scheduled classes",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Switch(
+                            checked = prefs.notificationsEnabled,
+                            onCheckedChange = { enabled ->
+                                if (enabled && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                                    if (androidx.core.content.ContextCompat.checkSelfPermission(
+                                            context,
+                                            android.Manifest.permission.POST_NOTIFICATIONS
+                                        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                                    ) {
+                                        notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                    } else {
+                                        viewModel.updateNotificationsEnabled(true)
+                                    }
+                                } else {
+                                    viewModel.updateNotificationsEnabled(enabled)
+                                }
+                            },
+                            modifier = Modifier.testTag("settings_notifications_switch")
+                        )
+                    }
+
+                    if (prefs.notificationsEnabled) {
+                        HorizontalDivider()
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Notification Sound")
+                            Switch(
+                                checked = prefs.notificationSound,
+                                onCheckedChange = { viewModel.updateNotificationSound(it) }
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Notification Vibration")
+                            Switch(
+                                checked = prefs.notificationVibrate,
+                                onCheckedChange = { viewModel.updateNotificationVibrate(it) }
+                            )
+                        }
+                    }
                 }
             }
 
