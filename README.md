@@ -57,13 +57,15 @@ College academic rules often demand a mandatory minimum attendance threshold (e.
 - **Safe Bunk Calculator**: Calculates the exact number of upcoming classes you can safely skip while staying above your target percentage (e.g., 75%).
 - **Recovery Calculator**: Calculates how many consecutive upcoming classes you must attend to pull a low percentage back up to your target.
 
-### 📷 Smart Timetable OCR Scanner
+### 📷 Smart Timetable OCR Scanner & Flexible Onboarding
 - Import your timetable from a photo or document image.
 - Powered by the Google Gemini Vision API to automatically parse subjects, timings, and days into your schedule.
+- Multi-option onboarding setup (Upload Timetable via OCR, Load Demo Data, or Manual Setup) with Gemini API key input and visibility toggle.
 
-### 🔔 Automated Class Reminders
-- Background notification alarms powered by Android `AlarmManager` and `WorkManager`.
+### 🔔 Automated Class Reminders & Notification Settings
+- Background notification alarms powered by Android `AlarmManager` and `WorkManager` featuring room number and instructor metadata.
 - Receive timely pre-class notifications with one-tap attendance logging actions.
+- Full notification control in Settings: customize reminder switches, notification sound, vibration feedback, and Android 13+ runtime permissions.
 
 ### 📊 Comprehensive Analytics & History Logs
 - Interactive Material 3 progress cards, status breakdown chips, and donut charts.

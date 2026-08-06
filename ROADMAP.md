@@ -9,14 +9,32 @@ This document outlines the official development roadmap and future feature speci
 | Milestone | Status | Target Release | Key Focus |
 | --------- | ------ | -------------- | --------- |
 | **v1.0.0** | :white_check_mark: Completed | Q3 2026 | Core Attendance Tracker, Timetable Builder, Bunk Calculator, Smart OCR |
-| **v1.1.0** | 🟡 In Planning | Q4 2026 | Android Glance Widgets, Interactive Notifications, Custom Offsets |
-| **v1.2.0** | ⏳ Scheduled | Q1 2027 | Multi-Semester Archiving, Historical Comparison & Term Reports |
-| **v1.3.0** | ⏳ Scheduled | Q2 2027 | Calendar Sync (.ics export), Advanced "What-If" Scenario Simulator |
+| **v1.1.0** | :white_check_mark: Completed | Q3 2026 | Notification Preferences, Gemini Onboarding & Precision Math |
+| **v1.2.0** | 🟡 In Planning | Q4 2026 | Android Glance Widgets, Interactive Notifications & Custom Offsets |
+| **v1.3.0** | ⏳ Scheduled | Q1 2027 | Multi-Semester Archiving, Historical Comparison & Term Reports |
+| **v1.4.0** | ⏳ Scheduled | Q2 2027 | Calendar Sync (.ics export), Advanced "What-If" Scenario Simulator |
 | **v2.0.0** | 🔮 Vision | Q3 2027 | Wear OS App Companion, Opt-In Encrypted Cloud Sync (WebDAV/Drive) |
 
 ---
 
-## 🎯 Version 1.1.0 — Widgets & Quick Actions
+## 🎯 Version 1.1.0 — Notifications, Gemini Onboarding & Precision Math
+
+### 🔔 Notification Settings & Reminders
+- [x] Customizable notification toggles for enabling/disabling reminders, sound, and vibration options.
+- [x] Android 13+ runtime `POST_NOTIFICATIONS` permission prompt in `MainActivity` and `SettingsScreen`.
+- [x] Detailed reminder alarms carrying class room numbers, instructor names, duration, and unit counts with instant notification actions.
+
+### 🔑 Gemini API & Onboarding Enhancements
+- [x] Flexible onboarding path choices: Upload Timetable OCR, Load Demo Data, or Manual Setup.
+- [x] Gemini API key input card with visibility toggle and direct link to Google AI Studio.
+
+### 🧮 Calculation Precision & Bunk Math Polish
+- [x] Epsilon tolerance floating-point math for precision calculation of safe bunks and recovery classes.
+- [x] Target threshold (100%) edge-case formula corrections and progress card label handling for 0 safe bunks.
+
+---
+
+## 📲 Version 1.2.0 — Widgets & Quick Actions
 
 ### 📲 Home Screen Widgets (Glance API)
 - [ ] **Quick Mark Widget**: View your current/next class and log Present, Absent, or Cancelled directly from your Android home screen without launching the full app.
@@ -28,7 +46,7 @@ This document outlines the official development roadmap and future feature speci
 
 ---
 
-## 📅 Version 1.2.0 — Multi-Semester Archiving
+## 📅 Version 1.3.0 — Multi-Semester Archiving
 
 ### 📁 Term Archiving System
 - [ ] Archive completed semester data to keep daily views focused on current term classes.
@@ -37,7 +55,7 @@ This document outlines the official development roadmap and future feature speci
 
 ---
 
-## 🚀 Version 1.3.0 — Calendar Sync & Predictive Simulations
+## 🚀 Version 1.4.0 — Calendar Sync & Predictive Simulations
 
 ### 🔄 Calendar Integration
 - [ ] Export class schedule directly to Android System Calendar / Google Calendar via `.ics` format.
