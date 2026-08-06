@@ -59,6 +59,12 @@ class SettingsViewModel(
         }
     }
 
+    fun updateSemesterDates(startDate: String, endDate: String) {
+        viewModelScope.launch {
+            preferencesRepository.updateSemesterDates(startDate, endDate)
+        }
+    }
+
     fun updateThemeMode(mode: String) {
         viewModelScope.launch {
             preferencesRepository.updateThemeMode(mode)

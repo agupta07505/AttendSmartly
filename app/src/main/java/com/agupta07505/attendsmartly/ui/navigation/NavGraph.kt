@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -106,13 +106,28 @@ fun NavGraph(
             composable(Screen.Setup.route) {
                 val settingsVm: SettingsViewModel = getViewModel { app -> SettingsViewModel(app.repository, app.userPreferencesRepository) }
                 val subjectsVm: SubjectsViewModel = getViewModel { app -> SubjectsViewModel(app.repository) }
+                val prefs by settingsVm.userPreferences.collectAsState()
 
                 SetupScreen(
-                    onSaveSetup = { targetPercent, _, _, firstSubject ->
+                    currentApiKey = prefs.geminiApiKey,
+                    onSaveApiKey = { key -> settingsVm.updateGeminiApiKey(key) },
+                    onSaveSetup = { targetPercent, startDate, endDate, firstSubject, loadDemo ->
                         settingsVm.updateDefaultTargetAttendance(targetPercent)
+                        if (startDate.isNotBlank() && endDate.isNotBlank()) {
+                            settingsVm.updateSemesterDates(startDate, endDate)
+                        }
+                        if (loadDemo) {
+                            settingsVm.loadDemoData {}
+                        }
                         firstSubject?.let { subjectsVm.addSubject(it) }
                         onCompleteOnboarding()
                         navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Setup.route) { inclusive = true }
+                        }
+                    },
+                    onNavigateToTimetableOcr = {
+                        onCompleteOnboarding()
+                        navController.navigate(Screen.Timetable.route) {
                             popUpTo(Screen.Setup.route) { inclusive = true }
                         }
                     },
