@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -11,6 +11,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agupta07505.attendsmartly.data.local.entity.AttendanceSessionEntity
 import com.agupta07505.attendsmartly.data.local.entity.AttendanceUnitEntity
+import com.agupta07505.attendsmartly.data.local.entity.SubjectEntity
+import com.agupta07505.attendsmartly.data.local.entity.TimetableEntryEntity
 import com.agupta07505.attendsmartly.data.preferences.UserPreferences
 import com.agupta07505.attendsmartly.data.preferences.UserPreferencesRepository
 import com.agupta07505.attendsmartly.data.repository.AttendSmartlyRepository
@@ -35,6 +37,9 @@ class HomeViewModel(
     val userPreferences: StateFlow<UserPreferences> = preferencesRepository.userPreferencesFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, UserPreferences())
 
+    val allActiveSubjects: StateFlow<List<SubjectEntity>> = repository.activeSubjects
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     // Last action for Undo
     private var lastSessionIdForUndo: Long? = null
     private var lastUnitsStateForUndo: List<AttendanceUnitEntity>? = null
@@ -43,8 +48,8 @@ class HomeViewModel(
         .flatMapLatest { dateIso ->
             val dayOfWeek = DateUtils.getDayOfWeekInt(dateIso)
             combine(
-                repository.getTimetableForDay(dayOfWeek),
-                repository.activeSubjects,
+                repository.getTimetableForDayAndDate(dayOfWeek, dateIso),
+                repository.allSubjects,
                 repository.getSessionsForDate(dateIso),
                 repository.allUnits,
                 repository.allHolidays
@@ -52,7 +57,8 @@ class HomeViewModel(
                 val holiday = holidays.find { it.date == dateIso }
                 val isHoliday = holiday != null
 
-                timetable.mapNotNull { entry ->
+                // 1. Regular timetable items
+                val scheduledItems = timetable.mapNotNull { entry ->
                     val subject = subjects.find { it.id == entry.subjectId } ?: return@mapNotNull null
                     val session = sessions.find { it.timetableEntryId == entry.id }
                     val units = if (session != null) {
@@ -70,6 +76,35 @@ class HomeViewModel(
                         holidayTitle = holiday?.title
                     )
                 }
+
+                // 2. Extra / Rescheduled sessions that are NOT already in scheduledItems
+                val standaloneSessions = sessions.filter { session ->
+                    session.timetableEntryId == null || timetable.none { it.id == session.timetableEntryId }
+                }.mapNotNull { session ->
+                    val subject = subjects.find { it.id == session.subjectId } ?: return@mapNotNull null
+                    val units = allUnits.filter { it.sessionId == session.id }
+                    val syntheticTimetableEntry = TimetableEntryEntity(
+                        id = -session.id,
+                        subjectId = session.subjectId,
+                        dayOfWeek = dayOfWeek,
+                        startTime = session.startTime,
+                        endTime = session.endTime,
+                        roomOverride = subject.room,
+                        teacherOverride = subject.teacherName,
+                        attendanceUnitCount = session.expectedUnitCount
+                    )
+
+                    ClassScheduleItem(
+                        session = session,
+                        timetableEntry = syntheticTimetableEntry,
+                        subject = subject,
+                        units = units,
+                        isHoliday = isHoliday,
+                        holidayTitle = holiday?.title
+                    )
+                }
+
+                (scheduledItems + standaloneSessions).sortedBy { it.timetableEntry.startTime }
             }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -93,7 +128,7 @@ class HomeViewModel(
 
         val newSession = AttendanceSessionEntity(
             subjectId = item.subject.id,
-            timetableEntryId = item.timetableEntry.id,
+            timetableEntryId = if (item.timetableEntry.id > 0) item.timetableEntry.id else null,
             sessionDate = _selectedDateIso.value,
             startTime = item.timetableEntry.startTime,
             endTime = item.timetableEntry.endTime,
@@ -163,6 +198,61 @@ class HomeViewModel(
             val sessionId = getOrCreateSession(item)
             saveUndoState(sessionId)
             repository.resetSessionAttendance(sessionId)
+        }
+    }
+
+    fun rescheduleClass(
+        item: ClassScheduleItem,
+        newDate: String,
+        newStartTime: String,
+        newEndTime: String,
+        unitCount: Int,
+        reason: String = ""
+    ) {
+        viewModelScope.launch {
+            repository.rescheduleClassSession(
+                originalDate = _selectedDateIso.value,
+                timetableEntryId = if (item.timetableEntry.id > 0) item.timetableEntry.id else null,
+                subjectId = item.subject.id,
+                originalTime = item.timetableEntry.startTime,
+                newDate = newDate,
+                newStartTime = newStartTime,
+                newEndTime = newEndTime,
+                unitCount = unitCount,
+                reason = reason
+            )
+        }
+    }
+
+    fun rescheduleSubjectClass(
+        subjectId: Long,
+        originalDate: String,
+        originalTime: String,
+        newDate: String,
+        newStartTime: String,
+        newEndTime: String,
+        unitCount: Int,
+        reason: String = ""
+    ) {
+        viewModelScope.launch {
+            repository.rescheduleClassSession(
+                originalDate = originalDate,
+                timetableEntryId = null,
+                subjectId = subjectId,
+                originalTime = originalTime,
+                newDate = newDate,
+                newStartTime = newStartTime,
+                newEndTime = newEndTime,
+                unitCount = unitCount,
+                reason = reason
+            )
+        }
+    }
+
+    fun cancelReschedule(item: ClassScheduleItem) {
+        val session = item.session ?: return
+        viewModelScope.launch {
+            repository.cancelReschedule(session)
         }
     }
 

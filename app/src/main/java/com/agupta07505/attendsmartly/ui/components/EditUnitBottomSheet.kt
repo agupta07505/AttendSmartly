@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -33,6 +34,7 @@ fun EditUnitBottomSheet(
     onUnitStatusChange: (unitId: Long, newStatus: AttendanceStatus) -> Unit,
     onMarkAllStatus: (status: AttendanceStatus) -> Unit,
     onResetSession: () -> Unit,
+    onReschedule: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(
@@ -48,11 +50,28 @@ fun EditUnitBottomSheet(
                 .testTag("edit_unit_bottom_sheet"),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Edit Attendance: $subjectName",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Edit Attendance: $subjectName",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = {
+                    onDismiss()
+                    onReschedule()
+                }) {
+                    Icon(
+                        imageVector = Icons.Default.EditCalendar,
+                        contentDescription = "Reschedule Class",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
             Text(
                 text = "Individual Unit Statuses",
@@ -90,7 +109,7 @@ fun EditUnitBottomSheet(
 
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState())
+                            modifier = Modifier.horizontalScroll(rememberScrollState())
                         ) {
                             FilterChip(
                                 selected = currentStatus == AttendanceStatus.PRESENT,
@@ -115,7 +134,7 @@ fun EditUnitBottomSheet(
                                 onClick = { onUnitStatusChange(unit.id, AttendanceStatus.BUNKED) },
                                 label = { Text("Bunked") },
                                 leadingIcon = if (currentStatus == AttendanceStatus.BUNKED) {
-                                    { Icon(Icons.Default.DirectionsRun, null, modifier = Modifier.size(16.dp)) }
+                                    { Icon(Icons.AutoMirrored.Filled.DirectionsRun, null, modifier = Modifier.size(16.dp)) }
                                 } else null
                             )
 
@@ -182,7 +201,7 @@ fun EditUnitBottomSheet(
                     },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Default.DirectionsRun, null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.DirectionsRun, null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Bunked")
                 }
@@ -208,6 +227,18 @@ fun EditUnitBottomSheet(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Reset")
                 }
+            }
+
+            OutlinedButton(
+                onClick = {
+                    onDismiss()
+                    onReschedule()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.EditCalendar, null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Reschedule This Class")
             }
         }
     }

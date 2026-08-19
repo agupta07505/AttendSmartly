@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -8,7 +8,6 @@
 package com.agupta07505.attendsmartly.util
 
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import com.agupta07505.attendsmartly.data.local.entity.*
 import com.agupta07505.attendsmartly.data.repository.AttendSmartlyRepository
@@ -19,6 +18,7 @@ import com.google.gson.GsonBuilder
 import kotlinx.coroutines.flow.first
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.time.LocalDate
 
 data class AttendSmartlyBackup(
     val version: Int = 1,
@@ -56,10 +56,26 @@ object ExportImportUtils {
         return gson.toJson(pkg)
     }
 
-    suspend fun importTimetableFromJson(jsonString: String, repository: AttendSmartlyRepository): Pair<Boolean, String> {
+    suspend fun importTimetableFromJson(
+        jsonString: String,
+        repository: AttendSmartlyRepository,
+        effectiveStartDate: String = DateUtils.todayIso(),
+        replaceExisting: Boolean = false
+    ): Pair<Boolean, String> {
         return try {
             val pkg = gson.fromJson(jsonString, TimetableSharePackage::class.java)
             if (pkg != null && pkg.timetableEntries.isNotEmpty()) {
+                if (replaceExisting) {
+                    val yesterdayStr = try {
+                        LocalDate.parse(effectiveStartDate, DateUtils.isoDateFormatter).minusDays(1).format(DateUtils.isoDateFormatter)
+                    } catch (e: Exception) { "" }
+                    if (yesterdayStr.isNotBlank()) {
+                        repository.allActiveTimetableEntries.first().forEach {
+                            repository.retireTimetableEntry(it.id, effectiveStartDate)
+                        }
+                    }
+                }
+
                 val existingSubjects = repository.allSubjects.first().associateBy { it.name.trim().lowercase() }
                 val subjectIdMap = mutableMapOf<Long, Long>()
 
@@ -80,12 +96,13 @@ object ExportImportUtils {
                         entry.copy(
                             id = 0,
                             subjectId = newSubjectId,
+                            startDate = if (entry.startDate.isNotBlank()) entry.startDate else effectiveStartDate,
                             createdAt = System.currentTimeMillis()
                         )
                     )
                     importedCount++
                 }
-                Pair(true, "Successfully imported $importedCount timetable entries!")
+                Pair(true, "Successfully imported $importedCount timetable entries starting from ${DateUtils.formatDateToHuman(effectiveStartDate)}!")
             } else {
                 val backup = gson.fromJson(jsonString, AttendSmartlyBackup::class.java)
                 if (backup != null && backup.timetableEntries.isNotEmpty()) {

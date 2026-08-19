@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -26,14 +26,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
@@ -44,13 +42,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,7 +58,10 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.agupta07505.attendsmartly.domain.model.ParsedTimetableItem
 import com.agupta07505.attendsmartly.util.DateUtils
-import java.util.UUID
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.ZoneOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,7 +71,7 @@ fun TimetableOcrDialog(
     onSaveApiKey: (String) -> Unit = {},
     onPickImage: (Uri) -> Unit,
     onProcessSampleImage: (Bitmap) -> Unit,
-    onConfirmImport: (List<ParsedTimetableItem>, Boolean) -> Unit,
+    onConfirmImport: (List<ParsedTimetableItem>, Boolean, String) -> Unit,
     onDismiss: () -> Unit
 ) {
     Dialog(
@@ -110,8 +111,8 @@ fun TimetableOcrDialog(
                         PreviewStep(
                             initialItems = state.parsedItems,
                             imageUri = state.imageUri,
-                            onConfirm = { items, replace ->
-                                onConfirmImport(items, replace)
+                            onConfirm = { items, replace, effectiveDate ->
+                                onConfirmImport(items, replace, effectiveDate)
                             },
                             onDismiss = onDismiss
                         )
@@ -345,7 +346,7 @@ private fun PickImageStep(
                             context.startActivity(intent)
                         }
                     ) {
-                        Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Get Free API Key", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                     }
@@ -514,16 +515,19 @@ private fun ProcessingStep(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PreviewStep(
     initialItems: List<ParsedTimetableItem>,
     imageUri: Uri?,
-    onConfirm: (List<ParsedTimetableItem>, Boolean) -> Unit,
+    onConfirm: (List<ParsedTimetableItem>, Boolean, String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var items by remember { mutableStateOf(initialItems.toMutableList()) }
     var selectedDay by remember { mutableIntStateOf(items.firstOrNull()?.dayOfWeek ?: 1) }
     var replaceExisting by remember { mutableStateOf(false) }
+    var effectiveStartDate by remember { mutableStateOf(DateUtils.todayIso()) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     var editingItem by remember { mutableStateOf<ParsedTimetableItem?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -801,32 +805,72 @@ private fun PreviewStep(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Replace vs Merge Option
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        // Replace vs Merge Option with Effective Date
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ),
+            shape = RoundedCornerShape(12.dp)
         ) {
-            Text(
-                text = "Replace existing timetable entries",
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium
-            )
-            Switch(
-                checked = replaceExisting,
-                onCheckedChange = { replaceExisting = it }
-            )
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Replace active timetable",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (replaceExisting) "Retires old schedule as of yesterday; past attendance is fully preserved!" else "Appends to your existing timetable schedule",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = replaceExisting,
+                        onCheckedChange = { replaceExisting = it }
+                    )
+                }
+
+                if (replaceExisting) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showDatePicker = true }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Effective From: ${DateUtils.formatDateToHuman(effectiveStartDate)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Icon(
+                            Icons.Default.CalendarMonth,
+                            contentDescription = "Pick Date",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         // Confirm Action Button
         Button(
-            onClick = { onConfirm(items, replaceExisting) },
+            onClick = { onConfirm(items, replaceExisting, effectiveStartDate) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -840,6 +884,38 @@ private fun PreviewStep(
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
+        }
+
+        if (showDatePicker) {
+            val initialLocalDate = try {
+                LocalDate.parse(effectiveStartDate, DateUtils.isoDateFormatter)
+            } catch (e: Exception) {
+                LocalDate.now()
+            }
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = initialLocalDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+            )
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val picked = Instant.ofEpochMilli(millis).atZone(ZoneId.of("UTC")).toLocalDate()
+                            effectiveStartDate = picked.format(DateUtils.isoDateFormatter)
+                        }
+                        showDatePicker = false
+                    }) {
+                        Text("OK")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) {
+                        Text("Cancel")
+                    }
+                }
+            ) {
+                DatePicker(state = datePickerState)
+            }
         }
     }
 
@@ -1062,7 +1138,7 @@ private fun ErrorStep(
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth(0.9f)
         ) {
-            Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Text("Get Free Gemini API Key")
         }
