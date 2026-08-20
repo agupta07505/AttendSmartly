@@ -199,9 +199,8 @@ class ExportImportUtilsTest {
         assertTrue(jsonElement.isJsonObject)
         val obj = jsonElement.asJsonObject
 
-        val subjectsJson = obj.get("subjects")
-        val listType = object : com.google.gson.reflect.TypeToken<List<SubjectEntity>>() {}.type
-        val parsedSubjects: List<SubjectEntity> = Gson().fromJson(subjectsJson, listType)
+        val subjectsJson = obj.get("subjects").asJsonArray
+        val parsedSubjects = ExportImportUtils.parseJsonArray(subjectsJson, SubjectEntity::class.java)
 
         assertEquals(1, parsedSubjects.size)
         val sanitizedSub = ExportImportUtils.sanitizeSubject(parsedSubjects[0])
@@ -211,34 +210,30 @@ class ExportImportUtilsTest {
         assertEquals("Book", sanitizedSub.iconName)
         assertEquals(60, sanitizedSub.defaultSessionDurationMinutes)
 
-        val timetableJson = obj.get("timetableEntries")
-        val entryType = object : com.google.gson.reflect.TypeToken<List<TimetableEntryEntity>>() {}.type
-        val parsedEntries: List<TimetableEntryEntity> = Gson().fromJson(timetableJson, entryType)
+        val timetableJson = obj.get("timetableEntries").asJsonArray
+        val parsedEntries = ExportImportUtils.parseJsonArray(timetableJson, TimetableEntryEntity::class.java)
         assertEquals(1, parsedEntries.size)
         val sanitizedEntry = ExportImportUtils.sanitizeTimetableEntry(parsedEntries[0])
         assertTrue(sanitizedEntry.isActive)
         assertEquals("09:00", sanitizedEntry.startTime)
         assertEquals("10:00", sanitizedEntry.endTime)
 
-        val sessionsJson = obj.get("sessions")
-        val sessType = object : com.google.gson.reflect.TypeToken<List<AttendanceSessionEntity>>() {}.type
-        val parsedSessions: List<AttendanceSessionEntity> = Gson().fromJson(sessionsJson, sessType)
+        val sessionsJson = obj.get("sessions").asJsonArray
+        val parsedSessions = ExportImportUtils.parseJsonArray(sessionsJson, AttendanceSessionEntity::class.java)
         assertEquals(1, parsedSessions.size)
         val sanitizedSession = ExportImportUtils.sanitizeSession(parsedSessions[0])
         assertEquals("2026-08-18", sanitizedSession.sessionDate)
         assertEquals(false, sanitizedSession.isRescheduled)
         assertEquals("", sanitizedSession.rescheduledReason)
 
-        val unitsJson = obj.get("units")
-        val unitType = object : com.google.gson.reflect.TypeToken<List<AttendanceUnitEntity>>() {}.type
-        val parsedUnits: List<AttendanceUnitEntity> = Gson().fromJson(unitsJson, unitType)
+        val unitsJson = obj.get("units").asJsonArray
+        val parsedUnits = ExportImportUtils.parseJsonArray(unitsJson, AttendanceUnitEntity::class.java)
         assertEquals(1, parsedUnits.size)
         val sanitizedUnit = ExportImportUtils.sanitizeUnit(parsedUnits[0], 201)
         assertEquals("PRESENT", sanitizedUnit.status)
 
-        val holidaysJson = obj.get("holidays")
-        val holType = object : com.google.gson.reflect.TypeToken<List<com.agupta07505.attendsmartly.data.local.entity.HolidayEntity>>() {}.type
-        val parsedHolidays: List<com.agupta07505.attendsmartly.data.local.entity.HolidayEntity> = Gson().fromJson(holidaysJson, holType)
+        val holidaysJson = obj.get("holidays").asJsonArray
+        val parsedHolidays = ExportImportUtils.parseJsonArray(holidaysJson, com.agupta07505.attendsmartly.data.local.entity.HolidayEntity::class.java)
         assertEquals(1, parsedHolidays.size)
         val sanitizedHoliday = ExportImportUtils.sanitizeHoliday(parsedHolidays[0])
         assertEquals("Independence Day", sanitizedHoliday.title)
