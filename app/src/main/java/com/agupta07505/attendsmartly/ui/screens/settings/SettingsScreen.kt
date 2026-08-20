@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.VolumeMute
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -646,7 +647,20 @@ fun SettingsScreen(
                                                     verticalAlignment = Alignment.CenterVertically,
                                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                                 ) {
-                                                    Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                                    Surface(
+                                                        shape = RoundedCornerShape(10.dp),
+                                                        color = if (prefs.notificationSound) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                                        modifier = Modifier.size(38.dp)
+                                                    ) {
+                                                        Box(contentAlignment = Alignment.Center) {
+                                                            Icon(
+                                                                if (prefs.notificationSound) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeMute,
+                                                                contentDescription = null,
+                                                                tint = if (prefs.notificationSound) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                modifier = Modifier.size(20.dp)
+                                                            )
+                                                        }
+                                                    }
                                                     Column {
                                                         Text("Alert Sound", fontWeight = FontWeight.SemiBold)
                                                         Text("Play notification audio chime", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -668,7 +682,20 @@ fun SettingsScreen(
                                                     verticalAlignment = Alignment.CenterVertically,
                                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                                 ) {
-                                                    Icon(Icons.Default.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                                    Surface(
+                                                        shape = RoundedCornerShape(10.dp),
+                                                        color = if (prefs.notificationVibrate) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                                        modifier = Modifier.size(38.dp)
+                                                    ) {
+                                                        Box(contentAlignment = Alignment.Center) {
+                                                            Icon(
+                                                                Icons.Default.Vibration,
+                                                                contentDescription = null,
+                                                                tint = if (prefs.notificationVibrate) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                modifier = Modifier.size(20.dp)
+                                                            )
+                                                        }
+                                                    }
                                                     Column {
                                                         Text("Alert Vibration", fontWeight = FontWeight.SemiBold)
                                                         Text("Vibrate on reminder alert", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -728,35 +755,37 @@ fun SettingsScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        val modes = listOf(
+                                        listOf(
                                             Triple("SYSTEM", "System", Icons.Default.BrightnessAuto),
                                             Triple("LIGHT", "Light", Icons.Default.LightMode),
                                             Triple("DARK", "Dark", Icons.Default.DarkMode)
-                                        )
-
-                                        modes.forEach { (modeKey, modeLabel, modeIcon) ->
-                                            val isSelected = prefs.themeMode == modeKey
-                                            Surface(
-                                                onClick = { viewModel.updateThemeMode(modeKey) },
-                                                shape = RoundedCornerShape(14.dp),
-                                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                        ).forEach { (mode, label, icon) ->
+                                            val isSelected = (prefs.themeMode == mode)
+                                            Card(
+                                                onClick = { viewModel.updateThemeMode(mode) },
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                                ),
                                                 border = if (isSelected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
+                                                shape = RoundedCornerShape(12.dp),
                                                 modifier = Modifier.weight(1f)
                                             ) {
                                                 Column(
-                                                    modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp),
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(vertical = 12.dp, horizontal = 4.dp),
                                                     horizontalAlignment = Alignment.CenterHorizontally,
                                                     verticalArrangement = Arrangement.spacedBy(6.dp)
                                                 ) {
                                                     Icon(
-                                                        imageVector = modeIcon,
-                                                        contentDescription = modeLabel,
+                                                        icon,
+                                                        contentDescription = null,
                                                         tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                                         modifier = Modifier.size(22.dp)
                                                     )
                                                     Text(
-                                                        text = modeLabel,
-                                                        fontSize = 12.sp,
+                                                        label,
+                                                        style = MaterialTheme.typography.labelMedium,
                                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                                         maxLines = 1
@@ -778,7 +807,20 @@ fun SettingsScreen(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                                         ) {
-                                            Icon(Icons.Default.ColorLens, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(10.dp),
+                                                color = if (prefs.dynamicColors) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                                modifier = Modifier.size(38.dp)
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        Icons.Default.ColorLens,
+                                                        contentDescription = null,
+                                                        tint = if (prefs.dynamicColors) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
+                                            }
                                             Column {
                                                 Text("Dynamic Material 3 Colors", fontWeight = FontWeight.SemiBold)
                                                 Text("Wallpaper-based theme (Android 12+)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

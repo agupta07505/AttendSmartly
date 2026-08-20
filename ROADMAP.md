@@ -10,10 +10,31 @@ This document outlines the official development roadmap and future feature speci
 | --------- | ------ | -------------- | --------- |
 | **v1.0.0** | :white_check_mark: Completed | Q3 2026 | Core Attendance Tracker, Timetable Builder, Bunk Calculator, Smart OCR |
 | **v1.1.0** | :white_check_mark: Completed | Q3 2026 | Notification Preferences, Gemini Onboarding & Precision Math |
-| **v1.2.0** | 🟡 In Planning | Q4 2026 | Android Glance Widgets, Interactive Notifications & Custom Offsets |
-| **v1.3.0** | ⏳ Scheduled | Q1 2027 | Multi-Semester Archiving, Historical Comparison & Term Reports |
-| **v1.4.0** | ⏳ Scheduled | Q2 2027 | Calendar Sync (.ics export), Advanced "What-If" Scenario Simulator |
+| **v1.2.0** | :white_check_mark: Completed | Q3 2026 | Class Rescheduling, Extra Classes, Modular Settings & Roundtrip Data Integrity |
+| **v1.3.0** | 🟡 In Planning | Q4 2026 | Android Glance Widgets, Interactive Notifications & Calendar Sync |
+| **v1.4.0** | ⏳ Scheduled | Q1 2027 | Multi-Semester Archiving, Historical Comparison & Term Reports |
+| **v1.5.0** | ⏳ Scheduled | Q2 2027 | Advanced "What-If" Scenario Simulator, Exam Schedules |
 | **v2.0.0** | 🔮 Vision | Q3 2027 | Wear OS App Companion, Opt-In Encrypted Cloud Sync (WebDAV/Drive) |
+
+---
+
+## 🎯 Version 1.2.0 — Class Rescheduling, Extra Classes & Modular Settings
+
+### 🔀 Class Rescheduling & Extra Classes
+- [x] Floating action speed dial on Home screen with dedicated actions for Extra Classes and Rescheduling.
+- [x] One-off extra class scheduler with custom unit count without altering recurring weekly timetables.
+- [x] Class rescheduling with reason metadata, notice indicators, and instant one-tap revert.
+
+### 🗂️ Modular Settings Screen
+- [x] Reorganized Settings into 6 dedicated sub-windows with smooth animated transitions and back handling.
+- [x] Quick preset chips for Target Percentage (`70%`, `75%`, `80%`, `85%`, `90%`) and Reminder Lead Times (`5m`, `10m`, `15m`, `30m`).
+- [x] Native Material `DatePickerDialog` integration for Semester Start & End dates.
+- [x] Polished Alert Sound, Alert Vibration, and Dynamic Material 3 icon containers.
+
+### 💾 Data Integrity & Backup Fidelity
+- [x] Fixed subject session resolution on specific dates with fallback matching.
+- [x] `getSessionForSubjectDateAndTime` in `AttendanceDao` for multiple classes of the same subject on the same day.
+- [x] Full roundtrip preservation of start/end dates during JSON backup restore.
 
 ---
 
