@@ -271,11 +271,15 @@ object ExportImportUtils {
 
             for (rawEntry in timetableEntries) {
                 val mappedSubjectId = subjectIdMap[rawEntry.subjectId] ?: rawEntry.subjectId
-                val entry = sanitizeTimetableEntry(rawEntry, effectiveStartDate).copy(
+                val entryStartDate = if (rawEntry.startDate.isNotBlank()) rawEntry.startDate.trim()
+                else if (replaceExisting) effectiveStartDate
+                else ""
+                val entry = sanitizeTimetableEntry(rawEntry, entryStartDate).copy(
                     id = 0,
                     subjectId = mappedSubjectId,
-                    startDate = if (rawEntry.startDate.isNotBlank()) rawEntry.startDate else effectiveStartDate,
-                    createdAt = System.currentTimeMillis()
+                    startDate = entryStartDate,
+                    endDate = rawEntry.endDate?.trim() ?: "",
+                    createdAt = if (rawEntry.createdAt > 0) rawEntry.createdAt else System.currentTimeMillis()
                 )
                 val newId = repository.insertTimetableEntry(entry)
                 timetableIdMap[rawEntry.id] = newId
@@ -323,7 +327,7 @@ object ExportImportUtils {
                 if (importedTimetableCount > 0 && importedSessionCount > 0) {
                     append("Successfully imported $importedTimetableCount timetable entries and $importedSessionCount attendance sessions!")
                 } else if (importedTimetableCount > 0) {
-                    append("Successfully imported $importedTimetableCount timetable entries starting from ${DateUtils.formatDateToHuman(effectiveStartDate)}!")
+                    append("Successfully imported $importedTimetableCount timetable entries!")
                 } else if (importedSessionCount > 0) {
                     append("Successfully imported $importedSessionCount attendance sessions!")
                 } else {
@@ -343,7 +347,7 @@ object ExportImportUtils {
             version = 1,
             exportedAt = System.currentTimeMillis(),
             subjects = repository.allSubjects.first(),
-            timetableEntries = repository.allActiveTimetableEntries.first(),
+            timetableEntries = repository.allTimetableEntries.first(),
             sessions = repository.allSessions.first(),
             units = repository.allUnits.first(),
             holidays = repository.allHolidays.first()

@@ -60,7 +60,10 @@ class HomeViewModel(
                 // 1. Regular timetable items
                 val scheduledItems = timetable.mapNotNull { entry ->
                     val subject = subjects.find { it.id == entry.subjectId } ?: return@mapNotNull null
-                    val session = sessions.find { it.timetableEntryId == entry.id }
+                    val session = sessions.find {
+                        (it.timetableEntryId != null && it.timetableEntryId == entry.id) ||
+                        (it.subjectId == entry.subjectId && it.startTime == entry.startTime)
+                    }
                     val units = if (session != null) {
                         allUnits.filter { it.sessionId == session.id }
                     } else {
@@ -78,8 +81,9 @@ class HomeViewModel(
                 }
 
                 // 2. Extra / Rescheduled sessions that are NOT already in scheduledItems
+                val matchedSessionIds = scheduledItems.mapNotNull { it.session?.id }.toSet()
                 val standaloneSessions = sessions.filter { session ->
-                    session.timetableEntryId == null || timetable.none { it.id == session.timetableEntryId }
+                    !matchedSessionIds.contains(session.id)
                 }.mapNotNull { session ->
                     val subject = subjects.find { it.id == session.subjectId } ?: return@mapNotNull null
                     val units = allUnits.filter { it.sessionId == session.id }

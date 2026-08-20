@@ -14,17 +14,20 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,14 +40,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.attendsmartly.BuildConfig
 import com.agupta07505.attendsmartly.R
-import com.agupta07505.attendsmartly.data.preferences.UserPreferences
+import com.agupta07505.attendsmartly.util.DateUtils
 import com.agupta07505.attendsmartly.util.GitHubReleaseInfo
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.ZoneOffset
 
 enum class SettingsSection(
     val title: String,
@@ -54,17 +64,17 @@ enum class SettingsSection(
 ) {
     ATTENDANCE(
         title = "Attendance Rules & Goals",
-        subtitle = "Target percentage, reminder minutes & semester dates",
+        subtitle = "Target percentage, reminder lead time & semester calendar",
         icon = Icons.Default.TrackChanges
     ),
     NOTIFICATIONS(
         title = "Notifications & Alerts",
-        subtitle = "Class reminder alerts, sound & vibration preferences",
+        subtitle = "Class reminders, alert sound & vibration toggles",
         icon = Icons.Default.NotificationsActive
     ),
     APPEARANCE(
         title = "Appearance & Theme",
-        subtitle = "System, light or dark theme & dynamic Material 3 colors",
+        subtitle = "System, light or dark mode & dynamic Material 3 colors",
         icon = Icons.Default.Palette
     ),
     AI_OCR(
@@ -85,7 +95,7 @@ enum class SettingsSection(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
@@ -114,7 +124,7 @@ fun SettingsScreen(
     var apiKeyVisible by remember { mutableStateOf(false) }
 
     var showClearDataConfirm by remember { mutableStateOf(false) }
-    var showDemoConfirm by remember { mutableStateOf(false) }
+    var activeDatePickerTarget by remember { mutableStateOf<String?>(null) } // "START" or "END"
 
     val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsState()
     var updateReleaseInfo by remember { mutableStateOf<GitHubReleaseInfo?>(null) }
@@ -172,7 +182,9 @@ fun SettingsScreen(
                 title = {
                     Text(
                         text = currentSection?.title ?: "Settings",
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {
@@ -240,14 +252,14 @@ fun SettingsScreen(
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(50.dp)
+                                modifier = Modifier.size(48.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         Icons.Default.School,
                                         contentDescription = "AttendSmartly",
                                         tint = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.size(28.dp)
+                                        modifier = Modifier.size(26.dp)
                                     )
                                 }
                             }
@@ -263,7 +275,7 @@ fun SettingsScreen(
                                         fontWeight = FontWeight.Bold
                                     )
                                     Surface(
-                                        shape = RoundedCornerShape(8.dp),
+                                        shape = RoundedCornerShape(6.dp),
                                         color = MaterialTheme.colorScheme.primary
                                     ) {
                                         Text(
@@ -285,7 +297,7 @@ fun SettingsScreen(
                     }
 
                     Text(
-                        text = "Preferences & Options",
+                        text = "Preferences & Sections",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
@@ -313,7 +325,8 @@ fun SettingsScreen(
                             text = "Made with ❤️ by Animesh Gupta • GNU GPL-3.0",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Center
                         )
                     }
 
@@ -335,25 +348,39 @@ fun SettingsScreen(
                             // 1. ATTENDANCE & ACADEMIC GOALS
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(18.dp)
+                                shape = RoundedCornerShape(20.dp)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(18.dp),
-                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
-                                        Icon(Icons.Default.TrackChanges, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                        Text("Attendance Rules & Goals", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = MaterialTheme.colorScheme.primaryContainer,
+                                            modifier = Modifier.size(38.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    Icons.Default.TrackChanges,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+                                        Column {
+                                            Text("Target Attendance Goal", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                            Text(
+                                                "Target % used for safe bunks and catch-up alerts",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
-
-                                    Text(
-                                        text = "Set your target attendance percentage and semester calendar to calculate accurate safe bunks and required attendance.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
 
                                     OutlinedTextField(
                                         value = targetText,
@@ -361,11 +388,72 @@ fun SettingsScreen(
                                             targetText = it
                                             it.toDoubleOrNull()?.let { t -> viewModel.updateDefaultTargetAttendance(t) }
                                         },
-                                        label = { Text("Default Target Attendance (%)") },
+                                        label = { Text("Target Attendance Percentage") },
                                         leadingIcon = { Icon(Icons.Default.Percent, null) },
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth().testTag("settings_target_input")
                                     )
+
+                                    // Quick Preset Chips for Target %
+                                    Text("Quick Presets", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        listOf("70", "75", "80", "85", "90").forEach { preset ->
+                                            val isSelected = targetText == preset
+                                            FilterChip(
+                                                selected = isSelected,
+                                                onClick = {
+                                                    targetText = preset
+                                                    preset.toDoubleOrNull()?.let { t -> viewModel.updateDefaultTargetAttendance(t) }
+                                                },
+                                                label = { Text("$preset%") },
+                                                leadingIcon = if (isSelected) {
+                                                    { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                                                } else null
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(20.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(18.dp),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = MaterialTheme.colorScheme.primaryContainer,
+                                            modifier = Modifier.size(38.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    Icons.Default.Notifications,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+                                        Column {
+                                            Text("Class Reminder Lead Time", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                            Text(
+                                                "Minutes before class to trigger reminders",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
 
                                     OutlinedTextField(
                                         value = reminderText,
@@ -373,42 +461,108 @@ fun SettingsScreen(
                                             reminderText = it
                                             it.toIntOrNull()?.let { r -> viewModel.updateDefaultReminderMinutes(r) }
                                         },
-                                        label = { Text("Class Reminder (Minutes Before)") },
-                                        leadingIcon = { Icon(Icons.Default.Notifications, null) },
+                                        label = { Text("Reminder Lead Time (Minutes)") },
+                                        leadingIcon = { Icon(Icons.Default.AccessTime, null) },
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth().testTag("settings_reminder_input")
                                     )
 
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    // Quick Preset Chips for Reminder Minutes
+                                    Text("Quick Presets", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        OutlinedTextField(
-                                            value = startDateText,
-                                            onValueChange = {
-                                                startDateText = it
-                                                viewModel.updateSemesterDates(it, endDateText)
-                                            },
-                                            label = { Text("Semester Start") },
-                                            placeholder = { Text("YYYY-MM-DD") },
-                                            leadingIcon = { Icon(Icons.Default.CalendarToday, null) },
-                                            singleLine = true,
-                                            modifier = Modifier.weight(1f)
-                                        )
-
-                                        OutlinedTextField(
-                                            value = endDateText,
-                                            onValueChange = {
-                                                endDateText = it
-                                                viewModel.updateSemesterDates(startDateText, it)
-                                            },
-                                            label = { Text("Semester End") },
-                                            placeholder = { Text("YYYY-MM-DD") },
-                                            leadingIcon = { Icon(Icons.Default.Event, null) },
-                                            singleLine = true,
-                                            modifier = Modifier.weight(1f)
-                                        )
+                                        listOf("5", "10", "15", "30").forEach { preset ->
+                                            val isSelected = reminderText == preset
+                                            FilterChip(
+                                                selected = isSelected,
+                                                onClick = {
+                                                    reminderText = preset
+                                                    preset.toIntOrNull()?.let { r -> viewModel.updateDefaultReminderMinutes(r) }
+                                                },
+                                                label = { Text("$preset min") },
+                                                leadingIcon = if (isSelected) {
+                                                    { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                                                } else null
+                                            )
+                                        }
                                     }
+                                }
+                            }
+
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(20.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(18.dp),
+                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = MaterialTheme.colorScheme.primaryContainer,
+                                            modifier = Modifier.size(38.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    Icons.Default.CalendarMonth,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+                                        Column {
+                                            Text("Semester Calendar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                            Text(
+                                                "Optional date range for timetable and stats",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+
+                                    OutlinedTextField(
+                                        value = startDateText,
+                                        onValueChange = {
+                                            startDateText = it
+                                            viewModel.updateSemesterDates(it, endDateText)
+                                        },
+                                        label = { Text("Semester Start Date") },
+                                        placeholder = { Text("YYYY-MM-DD") },
+                                        leadingIcon = { Icon(Icons.Default.CalendarToday, null) },
+                                        trailingIcon = {
+                                            IconButton(onClick = { activeDatePickerTarget = "START" }) {
+                                                Icon(Icons.Default.EditCalendar, contentDescription = "Pick start date")
+                                            }
+                                        },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+
+                                    OutlinedTextField(
+                                        value = endDateText,
+                                        onValueChange = {
+                                            endDateText = it
+                                            viewModel.updateSemesterDates(startDateText, it)
+                                        },
+                                        label = { Text("Semester End Date") },
+                                        placeholder = { Text("YYYY-MM-DD") },
+                                        leadingIcon = { Icon(Icons.Default.Event, null) },
+                                        trailingIcon = {
+                                            IconButton(onClick = { activeDatePickerTarget = "END" }) {
+                                                Icon(Icons.Default.EditCalendar, contentDescription = "Pick end date")
+                                            }
+                                        },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
                                 }
                             }
                         }
@@ -417,32 +571,44 @@ fun SettingsScreen(
                             // 2. NOTIFICATIONS & ALERTS
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(18.dp)
+                                shape = RoundedCornerShape(20.dp)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(18.dp),
-                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                        Text("Class Notifications", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    }
-
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text("Class Reminder Notifications", fontWeight = FontWeight.SemiBold)
-                                            Text(
-                                                "Receive alerts before scheduled classes",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
+                                        Row(
+                                            modifier = Modifier.weight(1f),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Surface(
+                                                shape = RoundedCornerShape(10.dp),
+                                                color = MaterialTheme.colorScheme.primaryContainer,
+                                                modifier = Modifier.size(38.dp)
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        Icons.Default.NotificationsActive,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
+                                            }
+                                            Column {
+                                                Text("Class Reminders", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                                Text(
+                                                    "Receive alerts before upcoming classes",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
                                         }
 
                                         Switch(
@@ -466,31 +632,53 @@ fun SettingsScreen(
                                         )
                                     }
 
-                                    if (prefs.notificationsEnabled) {
-                                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    AnimatedVisibility(visible = prefs.notificationsEnabled) {
+                                        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
 
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text("Notification Sound")
-                                            Switch(
-                                                checked = prefs.notificationSound,
-                                                onCheckedChange = { viewModel.updateNotificationSound(it) }
-                                            )
-                                        }
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.weight(1f),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                ) {
+                                                    Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                                    Column {
+                                                        Text("Alert Sound", fontWeight = FontWeight.SemiBold)
+                                                        Text("Play notification audio chime", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                    }
+                                                }
+                                                Switch(
+                                                    checked = prefs.notificationSound,
+                                                    onCheckedChange = { viewModel.updateNotificationSound(it) }
+                                                )
+                                            }
 
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text("Notification Vibration")
-                                            Switch(
-                                                checked = prefs.notificationVibrate,
-                                                onCheckedChange = { viewModel.updateNotificationVibrate(it) }
-                                            )
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.weight(1f),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                ) {
+                                                    Icon(Icons.Default.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                                    Column {
+                                                        Text("Alert Vibration", fontWeight = FontWeight.SemiBold)
+                                                        Text("Vibrate on reminder alert", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                    }
+                                                }
+                                                Switch(
+                                                    checked = prefs.notificationVibrate,
+                                                    onCheckedChange = { viewModel.updateNotificationVibrate(it) }
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -501,51 +689,101 @@ fun SettingsScreen(
                             // 3. APPEARANCE & THEME
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(18.dp)
+                                shape = RoundedCornerShape(20.dp)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(18.dp),
-                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
-                                        Icon(Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                        Text("Theme & Colors", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = MaterialTheme.colorScheme.primaryContainer,
+                                            modifier = Modifier.size(38.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    Icons.Default.Palette,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+                                        Column {
+                                            Text("Theme Mode", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                            Text(
+                                                "Choose your preferred visual appearance",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
 
-                                    Text("Theme Mode", style = MaterialTheme.typography.labelLarge)
+                                    // Responsive 3-option Theme Cards
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        FilterChip(
-                                            selected = prefs.themeMode == "SYSTEM",
-                                            onClick = { viewModel.updateThemeMode("SYSTEM") },
-                                            label = { Text("System") },
-                                            modifier = Modifier.weight(1f)
+                                        val modes = listOf(
+                                            Triple("SYSTEM", "System", Icons.Default.BrightnessAuto),
+                                            Triple("LIGHT", "Light", Icons.Default.LightMode),
+                                            Triple("DARK", "Dark", Icons.Default.DarkMode)
                                         )
-                                        FilterChip(
-                                            selected = prefs.themeMode == "LIGHT",
-                                            onClick = { viewModel.updateThemeMode("LIGHT") },
-                                            label = { Text("Light") },
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        FilterChip(
-                                            selected = prefs.themeMode == "DARK",
-                                            onClick = { viewModel.updateThemeMode("DARK") },
-                                            label = { Text("Dark") },
-                                            modifier = Modifier.weight(1f)
-                                        )
+
+                                        modes.forEach { (modeKey, modeLabel, modeIcon) ->
+                                            val isSelected = prefs.themeMode == modeKey
+                                            Surface(
+                                                onClick = { viewModel.updateThemeMode(modeKey) },
+                                                shape = RoundedCornerShape(14.dp),
+                                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                                border = if (isSelected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Column(
+                                                    modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp),
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = modeIcon,
+                                                        contentDescription = modeLabel,
+                                                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier = Modifier.size(22.dp)
+                                                    )
+                                                    Text(
+                                                        text = modeLabel,
+                                                        fontSize = 12.sp,
+                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
+
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
 
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text("Dynamic Material 3 Colors")
+                                        Row(
+                                            modifier = Modifier.weight(1f),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Icon(Icons.Default.ColorLens, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                            Column {
+                                                Text("Dynamic Material 3 Colors", fontWeight = FontWeight.SemiBold)
+                                                Text("Wallpaper-based theme (Android 12+)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                        }
                                         Switch(
                                             checked = prefs.dynamicColors,
                                             onCheckedChange = { viewModel.updateDynamicColors(it) }
@@ -559,34 +797,43 @@ fun SettingsScreen(
                             // 4. AI & TIMETABLE OCR
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(18.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
-                                )
+                                shape = RoundedCornerShape(20.dp)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(18.dp),
-                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
-                                        Icon(
-                                            Icons.Default.AutoAwesome,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(
-                                            "AI & Timetable OCR Scanner",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = MaterialTheme.colorScheme.primaryContainer,
+                                            modifier = Modifier.size(38.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    Icons.Default.AutoAwesome,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+                                        Column {
+                                            Text("Gemini AI OCR Scanner", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                            Text(
+                                                "Extracts schedule data from timetable photos",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
 
                                     Text(
-                                        text = "AttendSmartly extracts timetables from images using smart OCR. Enter your personal Gemini API key below for unlimited scans.",
-                                        style = MaterialTheme.typography.bodySmall,
+                                        text = "AttendSmartly uses Google Gemini to read college timetable charts from your gallery or camera. Provide your free Gemini API key below.",
+                                        style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
 
@@ -612,17 +859,17 @@ fun SettingsScreen(
                                         modifier = Modifier.fillMaxWidth().testTag("settings_gemini_api_key_input")
                                     )
 
-                                    OutlinedButton(
+                                    Button(
                                         onClick = {
                                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/app/apikey"))
-                                            context.startActivity(intent)
+                                            try { context.startActivity(intent) } catch (_: Exception) {}
                                         },
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(10.dp)
+                                        shape = RoundedCornerShape(12.dp)
                                     ) {
                                         Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Get Free Gemini API Key (Google AI Studio)", fontWeight = FontWeight.SemiBold)
+                                        Text("Get Free API Key (Google AI Studio)", fontWeight = FontWeight.SemiBold)
                                     }
                                 }
                             }
@@ -632,79 +879,84 @@ fun SettingsScreen(
                             // 5. DATA MANAGEMENT & BACKUPS
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(18.dp)
+                                shape = RoundedCornerShape(20.dp)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(18.dp),
-                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
-                                        Icon(Icons.Default.Storage, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                        Text("Data & Backup", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = MaterialTheme.colorScheme.primaryContainer,
+                                            modifier = Modifier.size(38.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    Icons.Default.Storage,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+                                        Column {
+                                            Text("Backup & Export", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                            Text(
+                                                "Manage local data files, snapshots and reports",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
 
                                     Button(
                                         onClick = { exportBackupLauncher.launch("AttendSmartly_backup.json") },
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(10.dp)
+                                        shape = RoundedCornerShape(12.dp)
                                     ) {
-                                        Icon(Icons.Default.Upload, null)
+                                        Icon(Icons.Default.Upload, null, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Export JSON Backup")
+                                        Text("Export JSON Backup", fontWeight = FontWeight.SemiBold)
                                     }
 
                                     OutlinedButton(
                                         onClick = { importBackupLauncher.launch(arrayOf("application/json", "*/*")) },
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(10.dp)
+                                        shape = RoundedCornerShape(12.dp)
                                     ) {
-                                        Icon(Icons.Default.Download, null)
+                                        Icon(Icons.Default.Download, null, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Restore JSON Backup")
+                                        Text("Restore JSON Backup", fontWeight = FontWeight.SemiBold)
                                     }
 
                                     OutlinedButton(
                                         onClick = { exportCsvLauncher.launch("AttendSmartly_attendance.csv") },
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(10.dp)
+                                        shape = RoundedCornerShape(12.dp)
                                     ) {
-                                        Icon(Icons.Default.TableChart, null)
+                                        Icon(Icons.Default.TableChart, null, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Export CSV Report")
+                                        Text("Export Attendance CSV", fontWeight = FontWeight.SemiBold)
                                     }
 
                                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
 
-                                    // Reset & Demo options
-                                    Text("Demo & Reset", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                                    // Reset Data options
+                                    Text("Reset Data", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
 
-                                    Row(
+                                    Button(
+                                        onClick = { showClearDataConfirm = true },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        shape = RoundedCornerShape(12.dp)
                                     ) {
-                                        FilledTonalButton(
-                                            onClick = { showDemoConfirm = true },
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(10.dp)
-                                        ) {
-                                            Icon(Icons.Default.AutoFixHigh, null, modifier = Modifier.size(18.dp))
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Demo Data", maxLines = 1)
-                                        }
-
-                                        Button(
-                                            onClick = { showClearDataConfirm = true },
-                                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(10.dp)
-                                        ) {
-                                            Icon(Icons.Default.DeleteForever, null, modifier = Modifier.size(18.dp))
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Clear Data", maxLines = 1)
-                                        }
+                                        Icon(Icons.Default.DeleteForever, null, modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Clear All App Data", fontWeight = FontWeight.SemiBold)
                                     }
                                 }
                             }
@@ -714,16 +966,16 @@ fun SettingsScreen(
                             // 6. ABOUT & UPDATES
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(18.dp)
+                                shape = RoundedCornerShape(20.dp)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(18.dp),
-                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
                                     // App Header & Version Banner
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(14.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Surface(
@@ -820,7 +1072,7 @@ fun SettingsScreen(
                                             } else {
                                                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                                                 Spacer(modifier = Modifier.width(6.dp))
-                                                Text("Check Update")
+                                                Text("Check Update", maxLines = 1)
                                             }
                                         }
 
@@ -847,34 +1099,32 @@ fun SettingsScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        // GitHub
                                         FilledTonalButton(
                                             onClick = {
                                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505"))
                                                 try { context.startActivity(intent) } catch (_: Exception) {}
                                             },
                                             modifier = Modifier.weight(1f).testTag("settings_github_btn"),
-                                            shape = RoundedCornerShape(10.dp),
-                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 6.dp)
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
                                         ) {
                                             Icon(painter = painterResource(R.drawable.ic_github), contentDescription = "GitHub", modifier = Modifier.size(18.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Text("GitHub", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                            Text("GitHub", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                                         }
 
-                                        // LinkedIn
                                         FilledTonalButton(
                                             onClick = {
                                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.linkedin.com/in/agupta07505"))
                                                 try { context.startActivity(intent) } catch (_: Exception) {}
                                             },
                                             modifier = Modifier.weight(1f).testTag("settings_linkedin_btn"),
-                                            shape = RoundedCornerShape(10.dp),
-                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 6.dp)
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
                                         ) {
                                             Icon(painter = painterResource(R.drawable.ic_linkedin), contentDescription = "LinkedIn", modifier = Modifier.size(18.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Text("LinkedIn", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                            Text("LinkedIn", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                                         }
                                     }
 
@@ -882,34 +1132,32 @@ fun SettingsScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        // Instagram
                                         FilledTonalButton(
                                             onClick = {
                                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.instagram.com/agupta07505"))
                                                 try { context.startActivity(intent) } catch (_: Exception) {}
                                             },
                                             modifier = Modifier.weight(1f).testTag("settings_instagram_btn"),
-                                            shape = RoundedCornerShape(10.dp),
-                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 6.dp)
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
                                         ) {
                                             Icon(painter = painterResource(R.drawable.ic_instagram), contentDescription = "Instagram", modifier = Modifier.size(18.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Instagram", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                            Text("Instagram", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                                         }
 
-                                        // Email
                                         FilledTonalButton(
                                             onClick = {
                                                 val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:agupta.07505@gmail.com"))
                                                 try { context.startActivity(intent) } catch (_: Exception) {}
                                             },
                                             modifier = Modifier.weight(1f).testTag("settings_email_btn"),
-                                            shape = RoundedCornerShape(10.dp),
-                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 6.dp)
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
                                         ) {
                                             Icon(imageVector = Icons.Default.Email, contentDescription = "Email", modifier = Modifier.size(18.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Email", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                            Text("Email", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                                         }
                                     }
 
@@ -929,11 +1177,11 @@ fun SettingsScreen(
                                             },
                                             modifier = Modifier.weight(1f),
                                             shape = RoundedCornerShape(10.dp),
-                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 6.dp)
+                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
                                         ) {
                                             Icon(Icons.Default.Star, contentDescription = "Review", modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Review", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                            Text("Review", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                                         }
 
                                         OutlinedButton(
@@ -943,11 +1191,11 @@ fun SettingsScreen(
                                             },
                                             modifier = Modifier.weight(1f),
                                             shape = RoundedCornerShape(10.dp),
-                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 6.dp)
+                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
                                         ) {
                                             Icon(Icons.Default.BugReport, contentDescription = "Report", modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Bug Report", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                            Text("Bug Report", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                                         }
 
                                         OutlinedButton(
@@ -957,11 +1205,11 @@ fun SettingsScreen(
                                             },
                                             modifier = Modifier.weight(1f),
                                             shape = RoundedCornerShape(10.dp),
-                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 6.dp)
+                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
                                         ) {
-                                            Icon(Icons.Default.Lightbulb, contentDescription = "Feature Request", modifier = Modifier.size(16.dp))
+                                            Icon(Icons.Default.Lightbulb, contentDescription = "Feature", modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Feature", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                            Text("Feature", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                                         }
                                     }
 
@@ -976,11 +1224,11 @@ fun SettingsScreen(
                                             },
                                             modifier = Modifier.weight(1f),
                                             shape = RoundedCornerShape(10.dp),
-                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 6.dp)
+                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
                                         ) {
                                             Icon(Icons.Default.Info, contentDescription = "License", modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("License", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                            Text("License", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                                         }
 
                                         OutlinedButton(
@@ -990,11 +1238,11 @@ fun SettingsScreen(
                                             },
                                             modifier = Modifier.weight(1f),
                                             shape = RoundedCornerShape(10.dp),
-                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 6.dp)
+                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
                                         ) {
                                             Icon(Icons.Default.Security, contentDescription = "Privacy", modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Privacy", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                            Text("Privacy", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                                         }
 
                                         OutlinedButton(
@@ -1004,11 +1252,11 @@ fun SettingsScreen(
                                             },
                                             modifier = Modifier.weight(1f),
                                             shape = RoundedCornerShape(10.dp),
-                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 6.dp)
+                                            contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
                                         ) {
                                             Icon(Icons.Default.Description, contentDescription = "Terms", modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Terms", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                            Text("Terms", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                                         }
                                     }
                                 }
@@ -1022,24 +1270,6 @@ fun SettingsScreen(
         }
     }
 
-    if (showDemoConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDemoConfirm = false },
-            title = { Text("Load Sample Demo Data?") },
-            text = { Text("This will add sample college subjects (DBMS, Operating Systems, Computer Networks) and a sample weekly timetable.") },
-            confirmButton = {
-                Button(onClick = {
-                    viewModel.loadDemoData {
-                        Toast.makeText(context, "Demo data loaded successfully!", Toast.LENGTH_SHORT).show()
-                    }
-                    showDemoConfirm = false
-                }) { Text("Load Demo Data") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDemoConfirm = false }) { Text("Cancel") }
-            }
-        )
-    }
 
     if (showClearDataConfirm) {
         AlertDialog(
@@ -1061,6 +1291,47 @@ fun SettingsScreen(
                 TextButton(onClick = { showClearDataConfirm = false }) { Text("Cancel") }
             }
         )
+    }
+
+    // Native DatePicker Modal for Semester Start & End Dates
+    activeDatePickerTarget?.let { target ->
+        val currentStr = if (target == "START") startDateText else endDateText
+        val initialLocalDate = try {
+            LocalDate.parse(currentStr, DateUtils.isoDateFormatter)
+        } catch (e: Exception) {
+            LocalDate.now()
+        }
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = initialLocalDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { activeDatePickerTarget = null },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val picked = Instant.ofEpochMilli(millis).atZone(ZoneId.of("UTC")).toLocalDate()
+                        val formatted = picked.format(DateUtils.isoDateFormatter)
+                        if (target == "START") {
+                            startDateText = formatted
+                            viewModel.updateSemesterDates(formatted, endDateText)
+                        } else {
+                            endDateText = formatted
+                            viewModel.updateSemesterDates(startDateText, formatted)
+                        }
+                    }
+                    activeDatePickerTarget = null
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { activeDatePickerTarget = null }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
     }
 
     updateReleaseInfo?.let { info ->
@@ -1143,9 +1414,10 @@ private fun SettingsSectionCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
             .testTag("settings_section_${section.name.lowercase()}"),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -1181,7 +1453,9 @@ private fun SettingsSectionCard(
                     Text(
                         text = section.title,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     if (section.badge != null) {
                         Surface(
@@ -1202,7 +1476,8 @@ private fun SettingsSectionCard(
                     text = section.subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
