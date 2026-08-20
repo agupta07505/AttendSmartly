@@ -62,7 +62,7 @@ fun AddEditTimetableDialog(
             else DateUtils.todayIso()
         )
     }
-    var preservePastHistory by remember { mutableStateOf(initialEntry != null) }
+    var preservePastHistory by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     var unitCount by remember(startTime, endTime, selectedSubject) {

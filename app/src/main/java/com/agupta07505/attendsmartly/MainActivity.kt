@@ -67,7 +67,9 @@ class MainActivity : ComponentActivity() {
 
             AttendSmartlyTheme(
                 themeMode = prefs.themeMode,
-                dynamicColor = prefs.dynamicColors
+                dynamicColor = prefs.dynamicColors,
+                themeColorStyle = prefs.themeColorStyle,
+                customColorHex = prefs.customThemeColor
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),

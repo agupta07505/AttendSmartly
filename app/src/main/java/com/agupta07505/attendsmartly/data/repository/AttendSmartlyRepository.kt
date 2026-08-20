@@ -38,15 +38,60 @@ class AttendSmartlyRepository(
     suspend fun deleteSubjectById(id: Long) = subjectDao.deleteSubjectById(id)
 
     // Timetable
-    val allActiveTimetableEntries: Flow<List<TimetableEntryEntity>> = timetableDao.getAllActiveEntries()
+    val allActiveTimetableEntries: Flow<List<TimetableEntryEntity>> = timetableDao.getAllActiveEntries(DateUtils.todayIso())
     val allTimetableEntries: Flow<List<TimetableEntryEntity>> = timetableDao.getAllEntries()
-    fun getTimetableForDay(dayOfWeek: Int): Flow<List<TimetableEntryEntity>> = timetableDao.getEntriesForDay(dayOfWeek)
+    fun getTimetableForDay(dayOfWeek: Int, dateStr: String = DateUtils.todayIso()): Flow<List<TimetableEntryEntity>> = timetableDao.getEntriesForDay(dayOfWeek, dateStr)
     fun getTimetableForDayAndDate(dayOfWeek: Int, dateStr: String): Flow<List<TimetableEntryEntity>> = timetableDao.getEntriesForDayAndDate(dayOfWeek, dateStr)
     fun getTimetableForSubject(subjectId: Long): Flow<List<TimetableEntryEntity>> = timetableDao.getEntriesForSubject(subjectId)
     suspend fun getTimetableEntryById(id: Long): TimetableEntryEntity? = timetableDao.getEntryById(id)
     suspend fun insertTimetableEntry(entry: TimetableEntryEntity): Long = timetableDao.insertEntry(entry)
-    suspend fun updateTimetableEntry(entry: TimetableEntryEntity) = timetableDao.updateEntry(entry)
-    suspend fun deleteTimetableEntry(id: Long) = timetableDao.deleteEntryById(id)
+
+    suspend fun updateTimetableEntry(entry: TimetableEntryEntity) {
+        val oldEntry = timetableDao.getEntryById(entry.id)
+        timetableDao.updateEntry(entry)
+
+        if (oldEntry != null) {
+            // If day of week or timing changed, clean up or update any future/today unmarked sessions linked to this entry
+            val linkedSessions = attendanceDao.getSessionsForTimetableEntry(entry.id)
+            for (session in linkedSessions) {
+                val sessionUnits = attendanceDao.getUnitsForSession(session.id)
+                val isMarked = sessionUnits.any { it.status != com.agupta07505.attendsmartly.domain.model.AttendanceStatus.UNMARKED.name }
+
+                if (!isMarked && !session.isRescheduled) {
+                    val sessionDayOfWeek = DateUtils.getDayOfWeekInt(session.sessionDate)
+                    if (sessionDayOfWeek != entry.dayOfWeek) {
+                        // Session was created on a day that is no longer scheduled
+                        attendanceDao.deleteSessionById(session.id)
+                    } else {
+                        // Update session timing and expected units
+                        val updatedSession = session.copy(
+                            subjectId = entry.subjectId,
+                            startTime = entry.startTime,
+                            endTime = entry.endTime,
+                            expectedUnitCount = entry.attendanceUnitCount,
+                            updatedAt = System.currentTimeMillis()
+                        )
+                        attendanceDao.updateSession(updatedSession)
+                    }
+                }
+            }
+        }
+    }
+
+    suspend fun deleteTimetableEntry(id: Long) {
+        val sessions = attendanceDao.getSessionsForTimetableEntry(id)
+        for (session in sessions) {
+            val sessionUnits = attendanceDao.getUnitsForSession(session.id)
+            val isMarked = sessionUnits.any { it.status != com.agupta07505.attendsmartly.domain.model.AttendanceStatus.UNMARKED.name }
+            if (!isMarked && !session.isRescheduled) {
+                attendanceDao.deleteSessionById(session.id)
+            } else {
+                attendanceDao.updateSession(session.copy(timetableEntryId = null))
+            }
+        }
+        timetableDao.deleteEntryById(id)
+    }
+
     suspend fun deleteAllTimetableEntries() = timetableDao.deleteAllEntries()
 
     suspend fun updateTimetableEntryFromDate(
@@ -62,6 +107,17 @@ class AttendSmartlyRepository(
 
             if (yesterdayStr.isNotBlank() && (oldEntry.startDate.isBlank() || oldEntry.startDate <= yesterdayStr)) {
                 timetableDao.setEntryEndDate(oldEntryId, yesterdayStr)
+
+                // Clean up any future or today UNMARKED sessions for the old entry
+                val futureSessions = attendanceDao.getSessionsForTimetableEntryFromDate(oldEntryId, effectiveStartDate)
+                for (session in futureSessions) {
+                    val sessionUnits = attendanceDao.getUnitsForSession(session.id)
+                    val isMarked = sessionUnits.any { it.status != com.agupta07505.attendsmartly.domain.model.AttendanceStatus.UNMARKED.name }
+                    if (!isMarked && !session.isRescheduled) {
+                        attendanceDao.deleteSessionById(session.id)
+                    }
+                }
+
                 return timetableDao.insertEntry(
                     updatedEntry.copy(
                         id = 0,
@@ -73,7 +129,7 @@ class AttendSmartlyRepository(
                     )
                 )
             } else {
-                timetableDao.updateEntry(updatedEntry)
+                updateTimetableEntry(updatedEntry)
                 return oldEntryId
             }
         }
@@ -86,8 +142,16 @@ class AttendSmartlyRepository(
         } catch (e: Exception) { "" }
         if (yesterdayStr.isNotBlank()) {
             timetableDao.setEntryEndDate(id, yesterdayStr)
+            val futureSessions = attendanceDao.getSessionsForTimetableEntryFromDate(id, effectiveDate)
+            for (session in futureSessions) {
+                val sessionUnits = attendanceDao.getUnitsForSession(session.id)
+                val isMarked = sessionUnits.any { it.status != com.agupta07505.attendsmartly.domain.model.AttendanceStatus.UNMARKED.name }
+                if (!isMarked && !session.isRescheduled) {
+                    attendanceDao.deleteSessionById(session.id)
+                }
+            }
         } else {
-            timetableDao.deleteEntryById(id)
+            deleteTimetableEntry(id)
         }
     }
 

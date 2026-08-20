@@ -47,6 +47,12 @@ interface AttendanceDao {
     @Query("DELETE FROM attendance_sessions WHERE id = :sessionId")
     suspend fun deleteSessionById(sessionId: Long)
 
+    @Query("SELECT * FROM attendance_sessions WHERE timetableEntryId = :timetableEntryId")
+    suspend fun getSessionsForTimetableEntry(timetableEntryId: Long): List<AttendanceSessionEntity>
+
+    @Query("SELECT * FROM attendance_sessions WHERE timetableEntryId = :timetableEntryId AND sessionDate >= :fromDate")
+    suspend fun getSessionsForTimetableEntryFromDate(timetableEntryId: Long, fromDate: String): List<AttendanceSessionEntity>
+
     // Attendance Units
     @Query("SELECT * FROM attendance_units WHERE sessionId = :sessionId ORDER BY unitIndex ASC")
     fun getUnitsForSessionFlow(sessionId: Long): Flow<List<AttendanceUnitEntity>>

@@ -22,12 +22,15 @@ data class UserPreferences(
     val notificationsEnabled: Boolean = true,
     val defaultTargetAttendance: Double = 75.0,
     val defaultReminderMinutes: Int = 10,
+    val trackBySemester: Boolean = false,
     val semesterStartDate: String = "",
     val semesterEndDate: String = "",
     val firstDayOfWeek: Int = 1, // 1 = Monday
     val timeFormat24Hr: Boolean = false,
     val themeMode: String = "SYSTEM", // "SYSTEM", "LIGHT", "DARK"
     val dynamicColors: Boolean = true,
+    val themeColorStyle: String = "DYNAMIC", // "DYNAMIC", "DEFAULT", "CUSTOM"
+    val customThemeColor: String = "#6750A4",
     val onboardingCompleted: Boolean = false,
     val confirmMarkingAbsent: Boolean = false,
     val notificationSound: Boolean = true,
@@ -41,12 +44,15 @@ class UserPreferencesRepository(private val context: Context) {
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val DEFAULT_TARGET_ATTENDANCE = doublePreferencesKey("default_target_attendance")
         val DEFAULT_REMINDER_MINUTES = intPreferencesKey("default_reminder_minutes")
+        val TRACK_BY_SEMESTER = booleanPreferencesKey("track_by_semester")
         val SEMESTER_START_DATE = stringPreferencesKey("semester_start_date")
         val SEMESTER_END_DATE = stringPreferencesKey("semester_end_date")
         val FIRST_DAY_OF_WEEK = intPreferencesKey("first_day_of_week")
         val TIME_FORMAT_24HR = booleanPreferencesKey("time_format_24hr")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val DYNAMIC_COLORS = booleanPreferencesKey("dynamic_colors")
+        val THEME_COLOR_STYLE = stringPreferencesKey("theme_color_style")
+        val CUSTOM_THEME_COLOR = stringPreferencesKey("custom_theme_color")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val CONFIRM_MARKING_ABSENT = booleanPreferencesKey("confirm_marking_absent")
         val NOTIFICATION_SOUND = booleanPreferencesKey("notification_sound")
@@ -67,12 +73,15 @@ class UserPreferencesRepository(private val context: Context) {
                 notificationsEnabled = preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] ?: true,
                 defaultTargetAttendance = preferences[PreferencesKeys.DEFAULT_TARGET_ATTENDANCE] ?: 75.0,
                 defaultReminderMinutes = preferences[PreferencesKeys.DEFAULT_REMINDER_MINUTES] ?: 10,
+                trackBySemester = preferences[PreferencesKeys.TRACK_BY_SEMESTER] ?: false,
                 semesterStartDate = preferences[PreferencesKeys.SEMESTER_START_DATE] ?: "",
                 semesterEndDate = preferences[PreferencesKeys.SEMESTER_END_DATE] ?: "",
                 firstDayOfWeek = preferences[PreferencesKeys.FIRST_DAY_OF_WEEK] ?: 1,
                 timeFormat24Hr = preferences[PreferencesKeys.TIME_FORMAT_24HR] ?: false,
                 themeMode = preferences[PreferencesKeys.THEME_MODE] ?: "SYSTEM",
                 dynamicColors = preferences[PreferencesKeys.DYNAMIC_COLORS] ?: true,
+                themeColorStyle = preferences[PreferencesKeys.THEME_COLOR_STYLE] ?: if (preferences[PreferencesKeys.DYNAMIC_COLORS] == false) "DEFAULT" else "DYNAMIC",
+                customThemeColor = preferences[PreferencesKeys.CUSTOM_THEME_COLOR] ?: "#6750A4",
                 onboardingCompleted = preferences[PreferencesKeys.ONBOARDING_COMPLETED] ?: false,
                 confirmMarkingAbsent = preferences[PreferencesKeys.CONFIRM_MARKING_ABSENT] ?: false,
                 notificationSound = preferences[PreferencesKeys.NOTIFICATION_SOUND] ?: true,
@@ -99,6 +108,12 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun updateTrackBySemester(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.TRACK_BY_SEMESTER] = enabled
+        }
+    }
+
     suspend fun updateSemesterDates(startDate: String, endDate: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.SEMESTER_START_DATE] = startDate
@@ -115,6 +130,24 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun updateDynamicColors(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.DYNAMIC_COLORS] = enabled
+            if (enabled) {
+                preferences[PreferencesKeys.THEME_COLOR_STYLE] = "DYNAMIC"
+            }
+        }
+    }
+
+    suspend fun updateThemeColorStyle(style: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.THEME_COLOR_STYLE] = style
+            preferences[PreferencesKeys.DYNAMIC_COLORS] = (style == "DYNAMIC")
+        }
+    }
+
+    suspend fun updateCustomThemeColor(hex: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CUSTOM_THEME_COLOR] = hex.trim()
+            preferences[PreferencesKeys.THEME_COLOR_STYLE] = "CUSTOM"
+            preferences[PreferencesKeys.DYNAMIC_COLORS] = false
         }
     }
 

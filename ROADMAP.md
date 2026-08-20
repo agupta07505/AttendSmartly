@@ -10,15 +10,15 @@ This document outlines the official development roadmap and future feature speci
 | --------- | ------ | -------------- | --------- |
 | **v1.0.0** | :white_check_mark: Completed | Q3 2026 | Core Attendance Tracker, Timetable Builder, Bunk Calculator, Smart OCR |
 | **v1.1.0** | :white_check_mark: Completed | Q3 2026 | Notification Preferences, Gemini Onboarding & Precision Math |
-| **v1.2.0** | :white_check_mark: Completed | Q3 2026 | Class Rescheduling, Extra Classes, Modular Settings & Roundtrip Data Integrity |
-| **v1.3.0** | 🟡 In Planning | Q4 2026 | Android Glance Widgets, Interactive Notifications & Calendar Sync |
-| **v1.4.0** | ⏳ Scheduled | Q1 2027 | Multi-Semester Archiving, Historical Comparison & Term Reports |
-| **v1.5.0** | ⏳ Scheduled | Q2 2027 | Advanced "What-If" Scenario Simulator, Exam Schedules |
-| **v2.0.0** | 🔮 Vision | Q3 2027 | Wear OS App Companion, Opt-In Encrypted Cloud Sync (WebDAV/Drive) |
+| **v2.0.0** | :white_check_mark: Completed | Q3 2026 | Class Rescheduling, Extra Classes, Modular Settings & Roundtrip Data Integrity |
+| **v2.1.0** | 🟡 In Planning | Q4 2026 | Android Glance Widgets, Interactive Notifications & Calendar Sync |
+| **v2.2.0** | ⏳ Scheduled | Q1 2027 | Multi-Semester Archiving, Historical Comparison & Term Reports |
+| **v2.3.0** | ⏳ Scheduled | Q2 2027 | Advanced "What-If" Scenario Simulator, Exam Schedules |
+| **v3.0.0** | 🔮 Vision | Q3 2027 | Wear OS App Companion, Opt-In Encrypted Cloud Sync (WebDAV/Drive) |
 
 ---
 
-## 🎯 Version 1.2.0 — Class Rescheduling, Extra Classes & Modular Settings
+## 🎯 Version 2.0.0 — Class Rescheduling, Extra Classes & Modular Settings
 
 ### 🔀 Class Rescheduling & Extra Classes
 - [x] Floating action speed dial on Home screen with dedicated actions for Extra Classes and Rescheduling.

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -9,9 +9,9 @@ package com.agupta07505.attendsmartly.ui.screens.subjectdetails
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.agupta07505.attendsmartly.data.local.entity.AttendanceSessionEntity
-import com.agupta07505.attendsmartly.data.local.entity.AttendanceUnitEntity
 import com.agupta07505.attendsmartly.data.local.entity.SubjectEntity
+import com.agupta07505.attendsmartly.data.preferences.UserPreferences
+import com.agupta07505.attendsmartly.data.preferences.UserPreferencesRepository
 import com.agupta07505.attendsmartly.data.repository.AttendSmartlyRepository
 import com.agupta07505.attendsmartly.domain.calculator.AttendanceCalculator
 import com.agupta07505.attendsmartly.domain.calculator.AttendanceSummary
@@ -24,17 +24,31 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalCoroutinesApi::class)
 class SubjectDetailViewModel(
     private val repository: AttendSmartlyRepository,
-    private val subjectId: Long
+    private val subjectId: Long,
+    private val preferencesRepository: UserPreferencesRepository? = null
 ) : ViewModel() {
+
+    val userPreferences: StateFlow<UserPreferences> = (preferencesRepository?.userPreferencesFlow ?: flowOf(UserPreferences()))
+        .stateIn(viewModelScope, SharingStarted.Eagerly, UserPreferences())
 
     val subject: StateFlow<SubjectEntity?> = repository.getSubjectByIdFlow(subjectId)
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val subjectSessions: StateFlow<List<SessionWithUnits>> = combine(
         repository.getSessionsForSubject(subjectId),
-        repository.getAllUnitsForSubject(subjectId)
-    ) { sessions, units ->
-        sessions.map { session ->
+        repository.getAllUnitsForSubject(subjectId),
+        userPreferences
+    ) { sessions, units, prefs ->
+        val validSessions = if (prefs.trackBySemester && (prefs.semesterStartDate.isNotBlank() || prefs.semesterEndDate.isNotBlank())) {
+            sessions.filter { session ->
+                val afterStart = prefs.semesterStartDate.isBlank() || session.sessionDate >= prefs.semesterStartDate
+                val beforeEnd = prefs.semesterEndDate.isBlank() || session.sessionDate <= prefs.semesterEndDate
+                afterStart && beforeEnd
+            }
+        } else {
+            sessions
+        }
+        validSessions.map { session ->
             val sessionUnits = units.filter { it.sessionId == session.id }
             SessionWithUnits(session = session, units = sessionUnits)
         }
@@ -42,10 +56,23 @@ class SubjectDetailViewModel(
 
     val summary: StateFlow<AttendanceSummary> = combine(
         subject,
-        repository.getAllUnitsForSubject(subjectId)
-    ) { sub, units ->
+        repository.getSessionsForSubject(subjectId),
+        repository.getAllUnitsForSubject(subjectId),
+        userPreferences
+    ) { sub, sessions, units, prefs ->
         val target = sub?.targetPercentage ?: 75.0
-        val statuses = units.mapNotNull {
+        val validUnits = if (prefs.trackBySemester && (prefs.semesterStartDate.isNotBlank() || prefs.semesterEndDate.isNotBlank())) {
+            val sessionDateMap = sessions.associate { it.id to it.sessionDate }
+            units.filter { unit ->
+                val sDate = sessionDateMap[unit.sessionId] ?: ""
+                val afterStart = prefs.semesterStartDate.isBlank() || sDate >= prefs.semesterStartDate
+                val beforeEnd = prefs.semesterEndDate.isBlank() || sDate <= prefs.semesterEndDate
+                afterStart && beforeEnd
+            }
+        } else {
+            units
+        }
+        val statuses = validUnits.mapNotNull {
             try { AttendanceStatus.valueOf(it.status) } catch (e: Exception) { null }
         }
         AttendanceCalculator.calculate(statuses, target)

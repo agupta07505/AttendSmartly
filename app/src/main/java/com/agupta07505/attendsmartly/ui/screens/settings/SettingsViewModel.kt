@@ -60,6 +60,12 @@ class SettingsViewModel(
         }
     }
 
+    fun updateTrackBySemester(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.updateTrackBySemester(enabled)
+        }
+    }
+
     fun updateSemesterDates(startDate: String, endDate: String) {
         viewModelScope.launch {
             preferencesRepository.updateSemesterDates(startDate, endDate)
@@ -78,6 +84,18 @@ class SettingsViewModel(
         }
     }
 
+    fun updateThemeColorStyle(style: String) {
+        viewModelScope.launch {
+            preferencesRepository.updateThemeColorStyle(style)
+        }
+    }
+
+    fun updateCustomThemeColor(hex: String) {
+        viewModelScope.launch {
+            preferencesRepository.updateCustomThemeColor(hex)
+        }
+    }
+
     fun updateGeminiApiKey(apiKey: String) {
         viewModelScope.launch {
             preferencesRepository.updateGeminiApiKey(apiKey)
@@ -91,10 +109,10 @@ class SettingsViewModel(
         }
     }
 
-    fun importBackup(context: Context, uri: Uri, onResult: (Boolean) -> Unit) {
+    fun importBackup(context: Context, uri: Uri, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
-            val success = ExportImportUtils.importDataFromJson(context, repository, uri)
-            onResult(success)
+            val (success, message) = ExportImportUtils.importDataFromJson(context, repository, uri)
+            onResult(success, message)
         }
     }
 

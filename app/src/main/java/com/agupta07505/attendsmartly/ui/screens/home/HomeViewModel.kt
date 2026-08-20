@@ -83,7 +83,8 @@ class HomeViewModel(
                 // 2. Extra / Rescheduled sessions that are NOT already in scheduledItems
                 val matchedSessionIds = scheduledItems.mapNotNull { it.session?.id }.toSet()
                 val standaloneSessions = sessions.filter { session ->
-                    !matchedSessionIds.contains(session.id)
+                    !matchedSessionIds.contains(session.id) &&
+                    (session.isRescheduled || allUnits.any { it.sessionId == session.id && it.status != AttendanceStatus.UNMARKED.name })
                 }.mapNotNull { session ->
                     val subject = subjects.find { it.id == session.subjectId } ?: return@mapNotNull null
                     val units = allUnits.filter { it.sessionId == session.id }
@@ -113,15 +114,41 @@ class HomeViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val isSelectedDateInSemester: StateFlow<Boolean> = combine(
+        _selectedDateIso,
+        userPreferences
+    ) { dateIso, prefs ->
+        isDateInSemester(dateIso, prefs)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
     val overallSummary: StateFlow<AttendanceSummary> = combine(
         repository.allUnits,
+        repository.allSessions,
         userPreferences
-    ) { units, prefs ->
-        val statuses = units.mapNotNull {
+    ) { units, sessions, prefs ->
+        val validUnits = if (prefs.trackBySemester && (prefs.semesterStartDate.isNotBlank() || prefs.semesterEndDate.isNotBlank())) {
+            val sessionDateMap = sessions.associate { it.id to it.sessionDate }
+            units.filter { unit ->
+                val sDate = sessionDateMap[unit.sessionId] ?: ""
+                val afterStart = prefs.semesterStartDate.isBlank() || sDate >= prefs.semesterStartDate
+                val beforeEnd = prefs.semesterEndDate.isBlank() || sDate <= prefs.semesterEndDate
+                afterStart && beforeEnd
+            }
+        } else {
+            units
+        }
+        val statuses = validUnits.mapNotNull {
             try { AttendanceStatus.valueOf(it.status) } catch (e: Exception) { null }
         }
         AttendanceCalculator.calculate(statuses, prefs.defaultTargetAttendance)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, AttendanceCalculator.calculate(emptyList()))
+
+    fun isDateInSemester(dateIso: String, prefs: UserPreferences = userPreferences.value): Boolean {
+        if (!prefs.trackBySemester) return true
+        if (prefs.semesterStartDate.isNotBlank() && dateIso < prefs.semesterStartDate) return false
+        if (prefs.semesterEndDate.isNotBlank() && dateIso > prefs.semesterEndDate) return false
+        return true
+    }
 
     fun selectDate(dateIso: String) {
         _selectedDateIso.value = dateIso
