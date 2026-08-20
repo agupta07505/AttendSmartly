@@ -135,6 +135,7 @@ fun ClassCard(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
                         )
+                        val isExtraClass = session != null && session.timetableEntryId == null && !isRescheduledIncoming && !isRescheduledAway
                         if (isRescheduledIncoming) {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
@@ -147,6 +148,20 @@ fun ClassCard(
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize = 9.sp,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        } else if (isExtraClass) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = "EXTRA CLASS",
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 9.sp,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                             }
                         }
@@ -250,7 +265,7 @@ fun ClassCard(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
                         ),
                         shape = RoundedCornerShape(10.dp)
                     ) {
@@ -259,19 +274,35 @@ fun ClassCard(
                                 .fillMaxWidth()
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                text = "Rescheduled from ${DateUtils.formatDateToHuman(session.originalDate)} (${DateUtils.formatTime(session.originalTime ?: "")})${if (session.rescheduledReason.isNotBlank()) " • ${session.rescheduledReason}" else ""}",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = "Rescheduled from ${DateUtils.formatDateToHuman(session.originalDate)} (${DateUtils.formatTime(session.originalTime ?: "")})${if (session.rescheduledReason.isNotBlank()) " • ${session.rescheduledReason}" else ""}",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            TextButton(
+                                onClick = onCancelReschedule,
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                modifier = Modifier.testTag("btn_revert_incoming_reschedule_${timetableEntry.id}")
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(12.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("Revert", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }

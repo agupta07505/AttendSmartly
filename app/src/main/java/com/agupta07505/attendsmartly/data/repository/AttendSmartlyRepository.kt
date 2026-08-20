@@ -209,6 +209,35 @@ class AttendSmartlyRepository(
         units: List<AttendanceUnitEntity>
     ): Long = attendanceDao.createOrUpdateSessionWithUnits(session, units)
 
+    suspend fun addExtraClassSession(
+        subjectId: Long,
+        dateIso: String,
+        startTime: String,
+        endTime: String,
+        unitCount: Int,
+        notes: String = ""
+    ): Long {
+        val session = AttendanceSessionEntity(
+            subjectId = subjectId,
+            timetableEntryId = null,
+            sessionDate = dateIso,
+            startTime = startTime,
+            endTime = endTime,
+            expectedUnitCount = unitCount,
+            notes = if (notes.isNotBlank()) notes else "Extra class",
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis()
+        )
+        val units = (0 until unitCount).map { index ->
+            AttendanceUnitEntity(
+                sessionId = 0,
+                unitIndex = index,
+                status = AttendanceStatus.UNMARKED.name
+            )
+        }
+        return attendanceDao.createOrUpdateSessionWithUnits(session, units)
+    }
+
     suspend fun updateUnitStatus(unitId: Long, newStatus: AttendanceStatus) {
         val target = attendanceDao.getUnitById(unitId) ?: return
         attendanceDao.updateUnit(
@@ -358,13 +387,19 @@ class AttendSmartlyRepository(
 
     suspend fun cancelReschedule(session: AttendanceSessionEntity) {
         if (session.isRescheduled) {
+            // Case 1: Called on the newly rescheduled target session (e.g. on newDate)
             val origDate = session.originalDate
             if (origDate != null) {
-                val originalSession = if (session.timetableEntryId != null) {
+                val origSessions = attendanceDao.getSessionsForSubject(session.subjectId).first()
+                val originalSession = origSessions.find {
+                    it.sessionDate == origDate &&
+                    (it.rescheduledToDate == session.sessionDate || (session.timetableEntryId != null && it.timetableEntryId == session.timetableEntryId))
+                } ?: (if (session.timetableEntryId != null) {
                     attendanceDao.getSessionForTimetableAndDate(session.timetableEntryId, origDate)
                 } else {
                     attendanceDao.getSessionForSubjectAndDate(session.subjectId, origDate)
-                }
+                })
+
                 if (originalSession != null) {
                     val updatedOriginal = originalSession.copy(
                         rescheduledToDate = null,
@@ -384,6 +419,34 @@ class AttendSmartlyRepository(
                 }
             }
             attendanceDao.deleteSessionById(session.id)
+        } else if (session.rescheduledToDate != null) {
+            // Case 2: Called on the original session (e.g. on originalDate where card shows 'Rescheduled to newDate')
+            val targetDate = session.rescheduledToDate
+            if (targetDate != null) {
+                val subjectSessions = attendanceDao.getSessionsForSubject(session.subjectId).first()
+                val targetSession = subjectSessions.find {
+                    it.sessionDate == targetDate && it.isRescheduled && it.originalDate == session.sessionDate
+                }
+                if (targetSession != null) {
+                    attendanceDao.deleteSessionById(targetSession.id)
+                }
+            }
+
+            val updatedOriginal = session.copy(
+                rescheduledToDate = null,
+                rescheduledToTime = null,
+                rescheduledReason = "",
+                notes = "",
+                updatedAt = System.currentTimeMillis()
+            )
+            val units = (0 until session.expectedUnitCount).map { idx ->
+                AttendanceUnitEntity(
+                    sessionId = session.id,
+                    unitIndex = idx,
+                    status = AttendanceStatus.UNMARKED.name
+                )
+            }
+            attendanceDao.createOrUpdateSessionWithUnits(updatedOriginal, units)
         }
     }
 
@@ -394,12 +457,13 @@ class AttendSmartlyRepository(
     suspend fun deleteHoliday(id: Long) = holidayDao.deleteHolidayById(id)
 
     suspend fun clearAllData() {
-        val subs = allSubjects.first()
+        val subs = subjectDao.getAllSubjects().first()
         for (s in subs) subjectDao.deleteSubject(s)
-        val tts = allActiveTimetableEntries.first()
-        for (t in tts) timetableDao.deleteEntryById(t.id)
-        val sesss = allSessions.first()
+        timetableDao.deleteAllEntries()
+        val sesss = attendanceDao.getAllSessions().first()
         for (se in sesss) attendanceDao.deleteSessionById(se.id)
+        val holidays = holidayDao.getAllHolidays().first()
+        for (h in holidays) holidayDao.deleteHolidayById(h.id)
     }
 
     suspend fun markPastAttendanceForSubject(

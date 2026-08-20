@@ -116,10 +116,13 @@ jobs:
 
       - name: Determine Version & Package Release APK
         id: version_info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ github.ref_type }}" = "tag" ]; then
             TAG_NAME="${{ github.ref_name }}"
             APP_VERSION="${TAG_NAME#v}"
+            SHOULD_RELEASE="true"
           else
             GRADLE_VERSION=$(grep 'versionName = ' app/build.gradle.kts | head -n 1 | cut -d'"' -f2)
             if [ -z "$GRADLE_VERSION" ]; then
@@ -127,10 +130,20 @@ jobs:
             fi
             APP_VERSION="${GRADLE_VERSION}"
             TAG_NAME="v${APP_VERSION}"
+
+            # Check if release tag already exists on GitHub to prevent overwriting
+            if gh release view "$TAG_NAME" > /dev/null 2>&1; then
+              echo "Release $TAG_NAME already exists on GitHub. Skipping release creation to protect original release."
+              SHOULD_RELEASE="false"
+            else
+              echo "Release $TAG_NAME does not exist yet. Proceeding with release creation."
+              SHOULD_RELEASE="true"
+            fi
           fi
 
           echo "APP_VERSION=${APP_VERSION}" >> $GITHUB_OUTPUT
           echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "SHOULD_RELEASE=${SHOULD_RELEASE}" >> $GITHUB_OUTPUT
 
           mkdir -p dist
           for apk in app/build/outputs/apk/release/*.apk; do
@@ -150,7 +163,7 @@ jobs:
           retention-days: 30
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+        if: steps.version_info.outputs.SHOULD_RELEASE == 'true'
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.apk

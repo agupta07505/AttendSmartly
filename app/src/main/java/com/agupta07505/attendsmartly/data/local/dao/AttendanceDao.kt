@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -80,17 +80,26 @@ interface AttendanceDao {
         session: AttendanceSessionEntity,
         units: List<AttendanceUnitEntity>
     ): Long {
-        val existingSession = getSessionById(session.id)
+        val existingSession = when {
+            session.id > 0 -> getSessionById(session.id)
+            session.timetableEntryId != null -> getSessionForTimetableAndDate(session.timetableEntryId, session.sessionDate)
+            else -> {
+                val sessionsOnDate = getSessionForSubjectAndDate(session.subjectId, session.sessionDate)
+                if (sessionsOnDate != null && sessionsOnDate.startTime == session.startTime && sessionsOnDate.timetableEntryId == null) {
+                    sessionsOnDate
+                } else null
+            }
+        }
         val sessionId = if (existingSession != null) {
-            updateSession(session)
-            session.id
+            updateSession(session.copy(id = existingSession.id))
+            existingSession.id
         } else {
-            insertSession(session)
+            insertSession(session.copy(id = 0))
         }
 
         // Replace units
         deleteUnitsForSession(sessionId)
-        val preparedUnits = units.map { it.copy(sessionId = sessionId) }
+        val preparedUnits = units.map { it.copy(id = 0, sessionId = sessionId) }
         insertUnits(preparedUnits)
         return sessionId
     }

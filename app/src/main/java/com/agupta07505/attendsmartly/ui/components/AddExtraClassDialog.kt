@@ -5,17 +5,17 @@
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
-package com.agupta07505.attendsmartly.ui.screens.timetable
+package com.agupta07505.attendsmartly.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.agupta07505.attendsmartly.data.local.entity.SubjectEntity
-import com.agupta07505.attendsmartly.data.local.entity.TimetableEntryEntity
 import com.agupta07505.attendsmartly.domain.calculator.AttendanceCalculator
 import com.agupta07505.attendsmartly.util.DateUtils
 import java.time.Instant
@@ -40,54 +39,42 @@ import java.time.ZoneOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddEditTimetableDialog(
-    initialEntry: TimetableEntryEntity? = null,
-    subjects: List<SubjectEntity>,
-    defaultDayOfWeek: Int = 1,
-    onSave: (entry: TimetableEntryEntity, preservePastHistory: Boolean, effectiveDate: String) -> Unit,
+fun AddExtraClassDialog(
+    availableSubjects: List<SubjectEntity>,
+    currentDateIso: String = DateUtils.todayIso(),
+    onConfirm: (
+        subjectId: Long,
+        dateIso: String,
+        startTime: String,
+        endTime: String,
+        unitCount: Int,
+        room: String,
+        teacher: String,
+        notes: String
+    ) -> Unit,
     onDismiss: () -> Unit
 ) {
     var selectedSubject by remember {
-        mutableStateOf(subjects.find { it.id == initialEntry?.subjectId } ?: subjects.firstOrNull())
+        mutableStateOf(availableSubjects.firstOrNull())
     }
-    var dayOfWeek by remember { mutableIntStateOf(initialEntry?.dayOfWeek ?: defaultDayOfWeek) }
-    var startTime by remember { mutableStateOf(initialEntry?.startTime ?: "10:00") }
-    var endTime by remember { mutableStateOf(initialEntry?.endTime ?: "12:00") }
-    var roomOverride by remember { mutableStateOf(initialEntry?.roomOverride ?: "") }
-    var teacherOverride by remember { mutableStateOf(initialEntry?.teacherOverride ?: "") }
+    var showSubjectDropdown by remember { mutableStateOf(false) }
 
-    var effectiveStartDate by remember {
-        mutableStateOf(
-            if (initialEntry?.startDate?.isNotBlank() == true) initialEntry.startDate
-            else DateUtils.todayIso()
-        )
-    }
-    var preservePastHistory by remember { mutableStateOf(initialEntry != null) }
+    var dateIso by remember { mutableStateOf(currentDateIso) }
+    var startTime by remember { mutableStateOf("14:00") }
+    var endTime by remember { mutableStateOf("15:00") }
+    var room by remember(selectedSubject) { mutableStateOf(selectedSubject?.room ?: "") }
+    var teacher by remember(selectedSubject) { mutableStateOf(selectedSubject?.teacherName ?: "") }
+    var notes by remember { mutableStateOf("") }
+
     var showDatePicker by remember { mutableStateOf(false) }
 
     var unitCount by remember(startTime, endTime, selectedSubject) {
         val calculatedDuration = DateUtils.calculateDurationMinutes(startTime, endTime)
         val unitMins = selectedSubject?.attendanceUnitMinutes ?: 60
         mutableIntStateOf(
-            initialEntry?.attendanceUnitCount ?: AttendanceCalculator.calculateAttendanceUnits(calculatedDuration, unitMins)
+            AttendanceCalculator.calculateAttendanceUnits(calculatedDuration, unitMins)
         )
     }
-
-    var reminderMinutes by remember {
-        mutableIntStateOf(initialEntry?.reminderMinutes ?: selectedSubject?.defaultReminderMinutes ?: 10)
-    }
-
-    var showSubjectDropdown by remember { mutableStateOf(false) }
-
-    val daysList = listOf(
-        1 to "Monday",
-        2 to "Tuesday",
-        3 to "Wednesday",
-        4 to "Thursday",
-        5 to "Friday",
-        6 to "Saturday",
-        7 to "Sunday"
-    )
 
     val subjectColor = selectedSubject?.let { Color(it.colorValue.toInt()) } ?: MaterialTheme.colorScheme.primary
 
@@ -125,7 +112,7 @@ fun AddEditTimetableDialog(
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Icon(
-                                Icons.Default.CalendarToday,
+                                Icons.Default.MoreTime,
                                 contentDescription = null,
                                 modifier = Modifier
                                     .padding(8.dp)
@@ -135,12 +122,12 @@ fun AddEditTimetableDialog(
                         }
                         Column {
                             Text(
-                                text = if (initialEntry == null) "Add Class to Timetable" else "Edit Timetable Entry",
+                                text = "Add Extra Class",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Configure subject, day, time, and units",
+                                text = "Schedule an extra class session for any date",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -175,7 +162,7 @@ fun AddEditTimetableDialog(
                             leadingIcon = {
                                 Box(
                                     modifier = Modifier
-                                        .size(14.dp)
+                                        .size(12.dp)
                                         .clip(CircleShape)
                                         .background(subjectColor)
                                 )
@@ -184,18 +171,20 @@ fun AddEditTimetableDialog(
                             modifier = Modifier
                                 .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
                                 .fillMaxWidth()
-                                .testTag("timetable_subject_dropdown")
+                                .testTag("extra_class_subject_dropdown")
                         )
 
                         ExposedDropdownMenu(
                             expanded = showSubjectDropdown,
                             onDismissRequest = { showSubjectDropdown = false }
                         ) {
-                            subjects.forEach { subject ->
+                            availableSubjects.forEach { sub ->
                                 DropdownMenuItem(
-                                    text = { Text("${subject.name} (${subject.type})") },
+                                    text = { Text("${sub.name} (${sub.type})") },
                                     onClick = {
-                                        selectedSubject = subject
+                                        selectedSubject = sub
+                                        room = sub.room
+                                        teacher = sub.teacherName
                                         showSubjectDropdown = false
                                     }
                                 )
@@ -203,33 +192,23 @@ fun AddEditTimetableDialog(
                         }
                     }
 
-                    // Day of Week
-                    Text(
-                        text = "Day of Week",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(
+                    // Date Selector
+                    OutlinedTextField(
+                        value = DateUtils.formatDateToHuman(dateIso),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Class Date*") },
+                        leadingIcon = { Icon(Icons.Default.Event, null) },
+                        trailingIcon = {
+                            IconButton(onClick = { showDatePicker = true }) {
+                                Icon(Icons.Default.CalendarMonth, contentDescription = "Pick Date")
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        daysList.forEach { (dInt, dName) ->
-                            FilterChip(
-                                selected = dayOfWeek == dInt,
-                                onClick = { dayOfWeek = dInt },
-                                label = {
-                                    Text(
-                                        text = dName.take(3),
-                                        maxLines = 1,
-                                        softWrap = false,
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
-                                }
-                            )
-                        }
-                    }
+                            .clickable { showDatePicker = true }
+                            .testTag("extra_class_date_input")
+                    )
 
                     // Start & End Time
                     Row(
@@ -242,7 +221,7 @@ fun AddEditTimetableDialog(
                             label = { Text("Start Time (HH:mm)") },
                             leadingIcon = { Icon(Icons.Default.Schedule, null) },
                             singleLine = true,
-                            modifier = Modifier.weight(1f).testTag("input_start_time")
+                            modifier = Modifier.weight(1f).testTag("extra_class_start_time")
                         )
 
                         OutlinedTextField(
@@ -250,71 +229,11 @@ fun AddEditTimetableDialog(
                             onValueChange = { endTime = it },
                             label = { Text("End Time (HH:mm)") },
                             singleLine = true,
-                            modifier = Modifier.weight(1f).testTag("input_end_time")
+                            modifier = Modifier.weight(1f).testTag("extra_class_end_time")
                         )
                     }
 
-                    // Effective Start Date
-                    OutlinedTextField(
-                        value = DateUtils.formatDateToHuman(effectiveStartDate),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Effective From Date") },
-                        leadingIcon = { Icon(Icons.Default.CalendarMonth, null) },
-                        trailingIcon = {
-                            IconButton(onClick = { showDatePicker = true }) {
-                                Icon(Icons.Default.CalendarMonth, contentDescription = "Pick Date")
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showDatePicker = true }
-                            .testTag("input_effective_date")
-                    )
-
-                    // Preservation of Past History Notice (When editing an existing timetable entry)
-                    if (initialEntry != null) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "Keep past schedule history intact",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Switch(
-                                        checked = preservePastHistory,
-                                        onCheckedChange = { preservePastHistory = it }
-                                    )
-                                }
-                                Text(
-                                    text = if (preservePastHistory)
-                                        "Past attendance records remain on their original dates & times. Changes apply from ${DateUtils.formatDateToHuman(effectiveStartDate)}."
-                                    else
-                                        "Overrides timetable directly across all dates.",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
-                                )
-                            }
-                        }
-                    }
-
-                    // Attendance Units count override
+                    // Attendance Units Count
                     OutlinedTextField(
                         value = unitCount.toString(),
                         onValueChange = { unitCount = it.toIntOrNull() ?: 1 },
@@ -324,14 +243,15 @@ fun AddEditTimetableDialog(
                             val ruleMins = selectedSubject?.attendanceUnitMinutes ?: 60
                             Text("Class duration: ${duration}m • Rule: ${ruleMins}m = 1 unit")
                         },
+                        leadingIcon = { Icon(Icons.Default.ConfirmationNumber, null) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    // Room Override
+                    // Classroom / Room (Optional)
                     OutlinedTextField(
-                        value = roomOverride,
-                        onValueChange = { roomOverride = it },
+                        value = room,
+                        onValueChange = { room = it },
                         label = { Text("Room / Location (Optional)") },
                         placeholder = { Text(selectedSubject?.room ?: "LH-101") },
                         leadingIcon = { Icon(Icons.Default.LocationOn, null) },
@@ -339,15 +259,26 @@ fun AddEditTimetableDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    // Teacher Override
+                    // Teacher Name (Optional)
                     OutlinedTextField(
-                        value = teacherOverride,
-                        onValueChange = { teacherOverride = it },
+                        value = teacher,
+                        onValueChange = { teacher = it },
                         label = { Text("Teacher Name (Optional)") },
                         placeholder = { Text(selectedSubject?.teacherName ?: "") },
                         leadingIcon = { Icon(Icons.Default.Person, null) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Notes / Reason
+                    OutlinedTextField(
+                        value = notes,
+                        onValueChange = { notes = it },
+                        label = { Text("Topic / Reason / Notes (Optional)") },
+                        placeholder = { Text("e.g. Extra lecture, Remedial session, Exam revision") },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Notes, null) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("extra_class_notes_input")
                     )
                 }
 
@@ -359,38 +290,35 @@ fun AddEditTimetableDialog(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = onDismiss) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.testTag("extra_class_cancel_btn")
+                    ) {
                         Text("Cancel")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
                             val sub = selectedSubject ?: return@Button
-                            val entry = (initialEntry ?: TimetableEntryEntity(
-                                subjectId = sub.id,
-                                dayOfWeek = dayOfWeek,
-                                startTime = startTime,
-                                endTime = endTime,
-                                startDate = effectiveStartDate
-                            )).copy(
-                                subjectId = sub.id,
-                                dayOfWeek = dayOfWeek,
-                                startTime = startTime.trim(),
-                                endTime = endTime.trim(),
-                                roomOverride = roomOverride.trim(),
-                                teacherOverride = teacherOverride.trim(),
-                                attendanceUnitCount = unitCount,
-                                reminderMinutes = reminderMinutes,
-                                startDate = effectiveStartDate,
-                                updatedAt = System.currentTimeMillis()
+                            onConfirm(
+                                sub.id,
+                                dateIso,
+                                startTime.trim(),
+                                endTime.trim(),
+                                unitCount,
+                                room.trim(),
+                                teacher.trim(),
+                                notes.trim()
                             )
-                            onSave(entry, preservePastHistory, effectiveStartDate)
+                            onDismiss()
                         },
-                        enabled = selectedSubject != null && startTime.isNotBlank() && endTime.isNotBlank(),
+                        enabled = selectedSubject != null && startTime.isNotBlank() && endTime.isNotBlank() && dateIso.isNotBlank(),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.testTag("save_timetable_btn")
+                        modifier = Modifier.testTag("extra_class_confirm_btn")
                     ) {
-                        Text("Save")
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Add Extra Class")
                     }
                 }
             }
@@ -399,23 +327,29 @@ fun AddEditTimetableDialog(
 
     if (showDatePicker) {
         val initialLocalDate = try {
-            LocalDate.parse(effectiveStartDate, DateUtils.isoDateFormatter)
+            LocalDate.parse(dateIso, DateUtils.isoDateFormatter)
         } catch (e: Exception) {
             LocalDate.now()
         }
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = initialLocalDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
         )
+
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        val picked = Instant.ofEpochMilli(millis).atZone(ZoneId.of("UTC")).toLocalDate()
-                        effectiveStartDate = picked.format(DateUtils.isoDateFormatter)
+                TextButton(
+                    onClick = {
+                        val millis = datePickerState.selectedDateMillis
+                        if (millis != null) {
+                            val pickedDate = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneId.of("UTC"))
+                                .toLocalDate()
+                            dateIso = pickedDate.format(DateUtils.isoDateFormatter)
+                        }
+                        showDatePicker = false
                     }
-                    showDatePicker = false
-                }) {
+                ) {
                     Text("OK")
                 }
             },

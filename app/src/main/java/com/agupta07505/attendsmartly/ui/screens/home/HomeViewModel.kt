@@ -249,10 +249,35 @@ class HomeViewModel(
         }
     }
 
-    fun cancelReschedule(item: ClassScheduleItem) {
-        val session = item.session ?: return
+    fun addExtraClass(
+        subjectId: Long,
+        dateIso: String,
+        startTime: String,
+        endTime: String,
+        unitCount: Int,
+        notes: String = ""
+    ) {
         viewModelScope.launch {
-            repository.cancelReschedule(session)
+            repository.addExtraClassSession(
+                subjectId = subjectId,
+                dateIso = dateIso,
+                startTime = startTime,
+                endTime = endTime,
+                unitCount = unitCount,
+                notes = notes
+            )
+        }
+    }
+
+    fun cancelReschedule(item: ClassScheduleItem) {
+        viewModelScope.launch {
+            val session = item.session ?: if (item.timetableEntry.id > 0) {
+                repository.getSessionsForDate(_selectedDateIso.value).first().find { it.timetableEntryId == item.timetableEntry.id }
+            } else null
+
+            if (session != null) {
+                repository.cancelReschedule(session)
+            }
         }
     }
 

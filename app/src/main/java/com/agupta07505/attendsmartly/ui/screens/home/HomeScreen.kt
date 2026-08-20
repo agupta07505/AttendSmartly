@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.attendsmartly.domain.model.ClassScheduleItem
+import com.agupta07505.attendsmartly.ui.components.AddExtraClassDialog
 import com.agupta07505.attendsmartly.ui.components.AttendanceProgressCard
 import com.agupta07505.attendsmartly.ui.components.ClassCard
 import com.agupta07505.attendsmartly.ui.components.EditUnitBottomSheet
@@ -63,6 +64,7 @@ fun HomeScreen(
     var activeSheetItem by remember { mutableStateOf<ClassScheduleItem?>(null) }
     var reschedulingItem by remember { mutableStateOf<ClassScheduleItem?>(null) }
     var showGeneralRescheduleDialog by remember { mutableStateOf(false) }
+    var showAddExtraClassDialog by remember { mutableStateOf(false) }
     var showFabMenu by remember { mutableStateOf(false) }
     var showDatePickerDialog by remember { mutableStateOf(false) }
 
@@ -125,6 +127,22 @@ fun HomeScreen(
                         ExtendedFloatingActionButton(
                             onClick = {
                                 showFabMenu = false
+                                showAddExtraClassDialog = true
+                            },
+                            icon = { Icon(Icons.Default.MoreTime, null) },
+                            text = { Text("Add Extra Class") }
+                        )
+                        ExtendedFloatingActionButton(
+                            onClick = {
+                                showFabMenu = false
+                                showGeneralRescheduleDialog = true
+                            },
+                            icon = { Icon(Icons.Default.EditCalendar, null) },
+                            text = { Text("Reschedule Class") }
+                        )
+                        ExtendedFloatingActionButton(
+                            onClick = {
+                                showFabMenu = false
                                 onNavigateToAddSubject()
                             },
                             icon = { Icon(Icons.Default.Book, null) },
@@ -137,14 +155,6 @@ fun HomeScreen(
                             },
                             icon = { Icon(Icons.Default.CalendarToday, null) },
                             text = { Text("Add Timetable Entry") }
-                        )
-                        ExtendedFloatingActionButton(
-                            onClick = {
-                                showFabMenu = false
-                                showGeneralRescheduleDialog = true
-                            },
-                            icon = { Icon(Icons.Default.EditCalendar, null) },
-                            text = { Text("Reschedule Class") }
                         )
                     }
                 }
@@ -413,9 +423,9 @@ fun HomeScreen(
         RescheduleClassDialog(
             item = item,
             currentDateIso = selectedDateIso,
-            onConfirm = { subjectId, origDate, origTime, newDate, newStartTime, newEndTime, unitCount, reason ->
+            onConfirm = { classItem, newDate, newStartTime, newEndTime, unitCount, reason ->
                 viewModel.rescheduleClass(
-                    item = item,
+                    item = classItem,
                     newDate = newDate,
                     newStartTime = newStartTime,
                     newEndTime = newEndTime,
@@ -431,17 +441,16 @@ fun HomeScreen(
         )
     }
 
-    // General Reschedule Dialog from FAB Quick Menu
+    // General Reschedule Dialog from FAB Quick Menu (only today's scheduled classes)
     if (showGeneralRescheduleDialog) {
+        val todayReschedulableClasses = todaySchedules.filter { it.session?.rescheduledToDate == null }
         RescheduleClassDialog(
             item = null,
-            availableSubjects = allActiveSubjects,
+            availableClasses = todayReschedulableClasses,
             currentDateIso = selectedDateIso,
-            onConfirm = { subjectId, origDate, origTime, newDate, newStartTime, newEndTime, unitCount, reason ->
-                viewModel.rescheduleSubjectClass(
-                    subjectId = subjectId,
-                    originalDate = origDate,
-                    originalTime = origTime,
+            onConfirm = { classItem, newDate, newStartTime, newEndTime, unitCount, reason ->
+                viewModel.rescheduleClass(
+                    item = classItem,
                     newDate = newDate,
                     newStartTime = newStartTime,
                     newEndTime = newEndTime,
@@ -454,6 +463,29 @@ fun HomeScreen(
                 }
             },
             onDismiss = { showGeneralRescheduleDialog = false }
+        )
+    }
+
+    // Add Extra Class Dialog from FAB Quick Menu
+    if (showAddExtraClassDialog) {
+        AddExtraClassDialog(
+            availableSubjects = allActiveSubjects,
+            currentDateIso = selectedDateIso,
+            onConfirm = { subjectId, dateIso, startTime, endTime, unitCount, room, teacher, notes ->
+                viewModel.addExtraClass(
+                    subjectId = subjectId,
+                    dateIso = dateIso,
+                    startTime = startTime,
+                    endTime = endTime,
+                    unitCount = unitCount,
+                    notes = notes
+                )
+                showAddExtraClassDialog = false
+                scope.launch {
+                    snackbarHostState.showSnackbar("Extra class added for ${DateUtils.formatDateToHuman(dateIso)}")
+                }
+            },
+            onDismiss = { showAddExtraClassDialog = false }
         )
     }
 }
