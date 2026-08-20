@@ -387,8 +387,8 @@ fun ClassCard(
                             .height(40.dp)
                             .testTag("btn_present_${timetableEntry.id}"),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (presentCount == expectedUnits) com.agupta07505.attendsmartly.ui.theme.StatusPresent else MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = if (presentCount == expectedUnits) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
+                            containerColor = if (presentCount == expectedUnits) com.agupta07505.attendsmartly.ui.theme.StatusPresent else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (presentCount == expectedUnits) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                         ),
                         shape = RoundedCornerShape(10.dp),
                         contentPadding = PaddingValues(horizontal = 2.dp)
