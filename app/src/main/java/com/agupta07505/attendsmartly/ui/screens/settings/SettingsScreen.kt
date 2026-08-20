@@ -1079,9 +1079,9 @@ fun SettingsScreen(
                                     // Update Checker & Releases Section
                                     Text("App Updates & Releases", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
 
-                                    Row(
+                                    Column(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
                                         Button(
                                             onClick = {
@@ -1099,22 +1099,23 @@ fun SettingsScreen(
                                             },
                                             enabled = !isCheckingUpdate,
                                             modifier = Modifier
-                                                .weight(1f)
+                                                .fillMaxWidth()
                                                 .testTag("settings_check_update_btn"),
-                                            shape = RoundedCornerShape(12.dp)
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(vertical = 12.dp, horizontal = 16.dp)
                                         ) {
                                             if (isCheckingUpdate) {
                                                 CircularProgressIndicator(
-                                                    modifier = Modifier.size(16.dp),
+                                                    modifier = Modifier.size(18.dp),
                                                     strokeWidth = 2.dp,
                                                     color = MaterialTheme.colorScheme.onPrimary
                                                 )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text("Checking...")
+                                                Spacer(modifier = Modifier.width(10.dp))
+                                                Text("Checking for Updates...")
                                             } else {
                                                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                                                Spacer(modifier = Modifier.width(6.dp))
-                                                Text("Check Update", maxLines = 1)
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text("Check for Updates", fontWeight = FontWeight.SemiBold)
                                             }
                                         }
 
@@ -1123,12 +1124,13 @@ fun SettingsScreen(
                                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/AttendSmartly/releases"))
                                                 try { context.startActivity(intent) } catch (_: Exception) {}
                                             },
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(12.dp)
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(vertical = 12.dp, horizontal = 16.dp)
                                         ) {
                                             Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Releases", maxLines = 1)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("Releases", fontWeight = FontWeight.SemiBold)
                                         }
                                     }
 
