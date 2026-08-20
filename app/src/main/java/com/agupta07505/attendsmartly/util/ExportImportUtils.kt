@@ -14,7 +14,6 @@ import com.agupta07505.attendsmartly.data.repository.AttendSmartlyRepository
 import com.agupta07505.attendsmartly.domain.calculator.AttendanceCalculator
 import com.agupta07505.attendsmartly.domain.model.AttendanceStatus
 import com.google.gson.*
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.first
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -276,22 +275,40 @@ object ExportImportUtils {
         }
     }
 
-    private inline fun <reified T> tryParseArray(arrayJson: String): List<T> {
-        val listType = object : TypeToken<List<T>>() {}.type
-        return try {
-            val parsed: List<T>? = gson.fromJson(arrayJson, listType)
-            parsed?.filterNotNull() ?: emptyList()
-        } catch (e: Exception) {
-            val results = mutableListOf<T>()
-            val objects = extractObjectsFromBlock(arrayJson)
-            for (objStr in objects) {
-                try {
-                    val obj = gson.fromJson(objStr, T::class.java)
-                    if (obj != null) results.add(obj)
-                } catch (_: Exception) {}
-            }
-            results
+    fun <T> parseJsonArray(jsonArray: JsonArray, clazz: Class<T>): List<T> {
+        val list = mutableListOf<T>()
+        for (elem in jsonArray) {
+            try {
+                val item = gson.fromJson(elem, clazz)
+                if (item != null) list.add(item)
+            } catch (_: Exception) {}
         }
+        return list
+    }
+
+    fun <T> tryParseArray(arrayJson: String, clazz: Class<T>): List<T> {
+        val list = mutableListOf<T>()
+        try {
+            val elem = JsonParser.parseString(arrayJson)
+            if (elem.isJsonArray) {
+                for (item in elem.asJsonArray) {
+                    try {
+                        val obj = gson.fromJson(item, clazz)
+                        if (obj != null) list.add(obj)
+                    } catch (_: Exception) {}
+                }
+                if (list.isNotEmpty()) return list
+            }
+        } catch (_: Exception) {}
+
+        val objects = extractObjectsFromBlock(arrayJson)
+        for (objStr in objects) {
+            try {
+                val obj = gson.fromJson(objStr, clazz)
+                if (obj != null) list.add(obj)
+            } catch (_: Exception) {}
+        }
+        return list
     }
 
     fun extractEntitiesFromMalformedJson(
@@ -318,11 +335,11 @@ object ExportImportUtils {
                 val arrayContent = extractBalancedSection(rawText, arrayStart, '[', ']')
                 if (arrayContent != null) {
                     when (type) {
-                        "subjects" -> outSubjects.addAll(tryParseArray<SubjectEntity>(arrayContent))
-                        "timetable" -> outTimetable.addAll(tryParseArray<TimetableEntryEntity>(arrayContent))
-                        "sessions" -> outSessions.addAll(tryParseArray<AttendanceSessionEntity>(arrayContent))
-                        "units" -> outUnits.addAll(tryParseArray<AttendanceUnitEntity>(arrayContent))
-                        "holidays" -> outHolidays.addAll(tryParseArray<HolidayEntity>(arrayContent))
+                        "subjects" -> outSubjects.addAll(tryParseArray(arrayContent, SubjectEntity::class.java))
+                        "timetable" -> outTimetable.addAll(tryParseArray(arrayContent, TimetableEntryEntity::class.java))
+                        "sessions" -> outSessions.addAll(tryParseArray(arrayContent, AttendanceSessionEntity::class.java))
+                        "units" -> outUnits.addAll(tryParseArray(arrayContent, AttendanceUnitEntity::class.java))
+                        "holidays" -> outHolidays.addAll(tryParseArray(arrayContent, HolidayEntity::class.java))
                     }
                 }
             }
@@ -419,62 +436,44 @@ object ExportImportUtils {
                     // Parse subjects
                     val subjectsJson = findArray("subjects", "subjectList", "subject_list", "allSubjects", "subjectsList")
                     if (subjectsJson != null) {
-                        val listType = object : TypeToken<List<SubjectEntity>>() {}.type
-                        val parsedSubjects: List<SubjectEntity>? = gson.fromJson(subjectsJson, listType)
-                        parsedSubjects?.let { subjects.addAll(it) }
+                        subjects.addAll(parseJsonArray(subjectsJson, SubjectEntity::class.java))
                     }
 
                     // Parse timetable entries
                     val timetableJson = findArray("timetableEntries", "timetable_entries", "timetable", "entries", "allTimetableEntries", "schedule", "timetableList")
                     if (timetableJson != null) {
-                        val listType = object : TypeToken<List<TimetableEntryEntity>>() {}.type
-                        val parsedEntries: List<TimetableEntryEntity>? = gson.fromJson(timetableJson, listType)
-                        parsedEntries?.let { timetableEntries.addAll(it) }
+                        timetableEntries.addAll(parseJsonArray(timetableJson, TimetableEntryEntity::class.java))
                     }
 
                     // Parse sessions
                     val sessionsJson = findArray("sessions", "attendanceSessions", "attendance_sessions", "attendance", "allSessions", "sessionList", "session_list")
                     if (sessionsJson != null) {
-                        val listType = object : TypeToken<List<AttendanceSessionEntity>>() {}.type
-                        val parsedSessions: List<AttendanceSessionEntity>? = gson.fromJson(sessionsJson, listType)
-                        parsedSessions?.let { sessions.addAll(it) }
+                        sessions.addAll(parseJsonArray(sessionsJson, AttendanceSessionEntity::class.java))
                     }
 
                     // Parse units
                     val unitsJson = findArray("units", "attendanceUnits", "attendance_units", "allUnits", "unitList", "unit_list")
                     if (unitsJson != null) {
-                        val listType = object : TypeToken<List<AttendanceUnitEntity>>() {}.type
-                        val parsedUnits: List<AttendanceUnitEntity>? = gson.fromJson(unitsJson, listType)
-                        parsedUnits?.let { units.addAll(it) }
+                        units.addAll(parseJsonArray(unitsJson, AttendanceUnitEntity::class.java))
                     }
 
                     // Parse holidays
                     val holidaysJson = findArray("holidays", "holidayList", "holiday_list", "allHolidays")
                     if (holidaysJson != null) {
-                        val listType = object : TypeToken<List<HolidayEntity>>() {}.type
-                        val parsedHolidays: List<HolidayEntity>? = gson.fromJson(holidaysJson, listType)
-                        parsedHolidays?.let { holidays.addAll(it) }
+                        holidays.addAll(parseJsonArray(holidaysJson, HolidayEntity::class.java))
                     }
                 } else if (jsonElement.isJsonArray) {
                     val array = jsonElement.asJsonArray
                     if (array.size() > 0 && array.get(0).isJsonObject) {
                         val firstObj = array.get(0).asJsonObject
                         if (firstObj.has("dayOfWeek") || (firstObj.has("startTime") && !firstObj.has("sessionDate"))) {
-                            val listType = object : TypeToken<List<TimetableEntryEntity>>() {}.type
-                            val parsedEntries: List<TimetableEntryEntity>? = gson.fromJson(array, listType)
-                            parsedEntries?.let { timetableEntries.addAll(it) }
+                            timetableEntries.addAll(parseJsonArray(array, TimetableEntryEntity::class.java))
                         } else if (firstObj.has("sessionDate")) {
-                            val listType = object : TypeToken<List<AttendanceSessionEntity>>() {}.type
-                            val parsedSessions: List<AttendanceSessionEntity>? = gson.fromJson(array, listType)
-                            parsedSessions?.let { sessions.addAll(it) }
+                            sessions.addAll(parseJsonArray(array, AttendanceSessionEntity::class.java))
                         } else if (firstObj.has("targetPercentage") || firstObj.has("colorValue") || firstObj.has("teacherName")) {
-                            val listType = object : TypeToken<List<SubjectEntity>>() {}.type
-                            val parsedSubjects: List<SubjectEntity>? = gson.fromJson(array, listType)
-                            parsedSubjects?.let { subjects.addAll(it) }
+                            subjects.addAll(parseJsonArray(array, SubjectEntity::class.java))
                         } else {
-                            val listType = object : TypeToken<List<TimetableEntryEntity>>() {}.type
-                            val parsedEntries: List<TimetableEntryEntity>? = gson.fromJson(array, listType)
-                            parsedEntries?.let { timetableEntries.addAll(it) }
+                            timetableEntries.addAll(parseJsonArray(array, TimetableEntryEntity::class.java))
                         }
                     }
                 }

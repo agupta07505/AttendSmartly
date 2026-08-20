@@ -31,6 +31,8 @@
 # ==============================================================================
 -keep class com.agupta07505.attendsmartly.domain.model.** { *; }
 -keep class com.agupta07505.attendsmartly.util.AttendSmartlyBackup { *; }
+-keep class com.agupta07505.attendsmartly.util.TimetableSharePackage { *; }
+-keep class com.agupta07505.attendsmartly.util.ExportImportUtils { *; }
 -keepclassmembers class * implements java.io.Serializable {
     static final long serialVersionUID;
     private static final java.io.ObjectStreamField[] serialPersistentFields;
