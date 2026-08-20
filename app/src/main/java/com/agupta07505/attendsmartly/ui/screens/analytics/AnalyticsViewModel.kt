@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -45,15 +45,28 @@ class AnalyticsViewModel(
         repository.allUnits,
         userPreferences
     ) { subjects, sessions, units, prefs ->
-        val allStatuses = units.mapNotNull {
+        val validSessions = if (prefs.trackBySemester && (prefs.semesterStartDate.isNotBlank() || prefs.semesterEndDate.isNotBlank())) {
+            sessions.filter { session ->
+                val afterStart = prefs.semesterStartDate.isBlank() || session.sessionDate >= prefs.semesterStartDate
+                val beforeEnd = prefs.semesterEndDate.isBlank() || session.sessionDate <= prefs.semesterEndDate
+                afterStart && beforeEnd
+            }
+        } else {
+            sessions
+        }
+
+        val validSessionIds = validSessions.map { it.id }.toSet()
+        val validUnits = units.filter { validSessionIds.contains(it.sessionId) }
+
+        val allStatuses = validUnits.mapNotNull {
             try { AttendanceStatus.valueOf(it.status) } catch (e: Exception) { null }
         }
         val overallSummary = AttendanceCalculator.calculate(allStatuses, prefs.defaultTargetAttendance)
 
         val subjectSummaries = subjects.map { subject ->
-            val subSessions = sessions.filter { it.subjectId == subject.id }
+            val subSessions = validSessions.filter { it.subjectId == subject.id }
             val sessionIds = subSessions.map { it.id }.toSet()
-            val subUnits = units.filter { sessionIds.contains(it.sessionId) }
+            val subUnits = validUnits.filter { sessionIds.contains(it.sessionId) }
             val subStatuses = subUnits.mapNotNull {
                 try { AttendanceStatus.valueOf(it.status) } catch (e: Exception) { null }
             }

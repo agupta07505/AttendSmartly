@@ -97,7 +97,12 @@ fun NavGraph(
         ) {
             composable(Screen.Onboarding.route) {
                 OnboardingScreen(
-                    onFinishOnboarding = { navController.navigate(Screen.Setup.route) },
+                    onFinishOnboarding = {
+                        onCompleteOnboarding()
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Onboarding.route) { inclusive = true }
+                        }
+                    },
                     onSkip = {
                         onCompleteOnboarding()
                         navController.navigate(Screen.Home.route) {
@@ -109,7 +114,7 @@ fun NavGraph(
 
             composable(Screen.Setup.route) {
                 val settingsVm: SettingsViewModel = getViewModel { app -> SettingsViewModel(app.repository, app.userPreferencesRepository) }
-                val subjectsVm: SubjectsViewModel = getViewModel { app -> SubjectsViewModel(app.repository) }
+                val subjectsVm: SubjectsViewModel = getViewModel { app -> SubjectsViewModel(app.repository, app.userPreferencesRepository) }
                 val prefs by settingsVm.userPreferences.collectAsState()
 
                 SetupScreen(
@@ -167,7 +172,7 @@ fun NavGraph(
             }
 
             composable(Screen.Subjects.route) {
-                val subjectsVm: SubjectsViewModel = getViewModel { app -> SubjectsViewModel(app.repository) }
+                val subjectsVm: SubjectsViewModel = getViewModel { app -> SubjectsViewModel(app.repository, app.userPreferencesRepository) }
                 SubjectsScreen(
                     viewModel = subjectsVm,
                     onNavigateToSubjectDetail = { subId ->
@@ -186,7 +191,7 @@ fun NavGraph(
                 arguments = listOf(navArgument("subjectId") { type = NavType.LongType })
             ) { backStackEntry ->
                 val subjectId = backStackEntry.arguments?.getLong("subjectId") ?: 0L
-                val detailVm: SubjectDetailViewModel = getViewModel { app -> SubjectDetailViewModel(app.repository, subjectId) }
+                val detailVm: SubjectDetailViewModel = getViewModel { app -> SubjectDetailViewModel(app.repository, subjectId, app.userPreferencesRepository) }
                 SubjectDetailScreen(
                     viewModel = detailVm,
                     onNavigateBack = { navController.popBackStack() }

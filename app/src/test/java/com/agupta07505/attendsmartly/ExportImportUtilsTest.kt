@@ -9,6 +9,7 @@ package com.agupta07505.attendsmartly
 
 import com.agupta07505.attendsmartly.data.local.entity.AttendanceSessionEntity
 import com.agupta07505.attendsmartly.data.local.entity.AttendanceUnitEntity
+import com.agupta07505.attendsmartly.data.local.entity.HolidayEntity
 import com.agupta07505.attendsmartly.data.local.entity.SubjectEntity
 import com.agupta07505.attendsmartly.data.local.entity.TimetableEntryEntity
 import com.agupta07505.attendsmartly.util.ExportImportUtils
@@ -106,6 +107,145 @@ class ExportImportUtilsTest {
     }
 
     @Test
+    fun testSanitizeHolidayWithNulls() {
+        val rawJson = """
+            {
+                "id": 1,
+                "notes": null
+            }
+        """.trimIndent()
+
+        val gson = Gson()
+        val deserialized = gson.fromJson(rawJson, com.agupta07505.attendsmartly.data.local.entity.HolidayEntity::class.java)
+        val sanitized = ExportImportUtils.sanitizeHoliday(deserialized)
+
+        assertEquals("Holiday", sanitized.title)
+        assertEquals("", sanitized.notes)
+        assertTrue(sanitized.date.isNotBlank())
+    }
+
+    @Test
+    fun testSanitizeExtendedUnitStatuses() {
+        val u1 = AttendanceUnitEntity(sessionId = 1, unitIndex = 0, status = "ATTENDED")
+        val u2 = AttendanceUnitEntity(sessionId = 1, unitIndex = 1, status = "MISSED")
+        val u3 = AttendanceUnitEntity(sessionId = 1, unitIndex = 2, status = "CANCELED")
+        val u4 = AttendanceUnitEntity(sessionId = 1, unitIndex = 3, status = "YES")
+        val u5 = AttendanceUnitEntity(sessionId = 1, unitIndex = 4, status = "NO")
+
+        assertEquals("PRESENT", ExportImportUtils.sanitizeUnit(u1, 10).status)
+        assertEquals("ABSENT", ExportImportUtils.sanitizeUnit(u2, 10).status)
+        assertEquals("CANCELLED", ExportImportUtils.sanitizeUnit(u3, 10).status)
+        assertEquals("PRESENT", ExportImportUtils.sanitizeUnit(u4, 10).status)
+        assertEquals("ABSENT", ExportImportUtils.sanitizeUnit(u5, 10).status)
+    }
+
+    @Test
+    fun testV12BackupWithMissingFieldsAndNullsDeserialization() {
+        // Simulating a realistic v1.2 backup JSON where newer fields are missing
+        val v12Json = """
+            {
+                "version": 1,
+                "exportedAt": 1724140000000,
+                "subjects": [
+                    {
+                        "id": 1,
+                        "name": "Machine Learning",
+                        "code": "CS401",
+                        "type": "Lecture",
+                        "colorValue": 4280391411,
+                        "targetPercentage": 75.0
+                    }
+                ],
+                "timetableEntries": [
+                    {
+                        "id": 101,
+                        "subjectId": 1,
+                        "dayOfWeek": 1,
+                        "startTime": "09:00",
+                        "endTime": "10:00",
+                        "attendanceUnitCount": 1
+                    }
+                ],
+                "sessions": [
+                    {
+                        "id": 201,
+                        "subjectId": 1,
+                        "timetableEntryId": 101,
+                        "sessionDate": "2026-08-18",
+                        "startTime": "09:00",
+                        "endTime": "10:00",
+                        "expectedUnitCount": 1
+                    }
+                ],
+                "units": [
+                    {
+                        "id": 301,
+                        "sessionId": 201,
+                        "unitIndex": 0,
+                        "status": "PRESENT"
+                    }
+                ],
+                "holidays": [
+                    {
+                        "id": 401,
+                        "date": "2026-08-15",
+                        "title": "Independence Day"
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val jsonElement = com.google.gson.JsonParser.parseString(v12Json)
+        assertTrue(jsonElement.isJsonObject)
+        val obj = jsonElement.asJsonObject
+
+        val subjectsJson = obj.get("subjects")
+        val listType = object : com.google.gson.reflect.TypeToken<List<SubjectEntity>>() {}.type
+        val parsedSubjects: List<SubjectEntity> = Gson().fromJson(subjectsJson, listType)
+
+        assertEquals(1, parsedSubjects.size)
+        val sanitizedSub = ExportImportUtils.sanitizeSubject(parsedSubjects[0])
+        assertEquals("Machine Learning", sanitizedSub.name)
+        assertEquals("CS401", sanitizedSub.code)
+        assertEquals("Lecture", sanitizedSub.type)
+        assertEquals("Book", sanitizedSub.iconName)
+        assertEquals(60, sanitizedSub.defaultSessionDurationMinutes)
+
+        val timetableJson = obj.get("timetableEntries")
+        val entryType = object : com.google.gson.reflect.TypeToken<List<TimetableEntryEntity>>() {}.type
+        val parsedEntries: List<TimetableEntryEntity> = Gson().fromJson(timetableJson, entryType)
+        assertEquals(1, parsedEntries.size)
+        val sanitizedEntry = ExportImportUtils.sanitizeTimetableEntry(parsedEntries[0])
+        assertTrue(sanitizedEntry.isActive)
+        assertEquals("09:00", sanitizedEntry.startTime)
+        assertEquals("10:00", sanitizedEntry.endTime)
+
+        val sessionsJson = obj.get("sessions")
+        val sessType = object : com.google.gson.reflect.TypeToken<List<AttendanceSessionEntity>>() {}.type
+        val parsedSessions: List<AttendanceSessionEntity> = Gson().fromJson(sessionsJson, sessType)
+        assertEquals(1, parsedSessions.size)
+        val sanitizedSession = ExportImportUtils.sanitizeSession(parsedSessions[0])
+        assertEquals("2026-08-18", sanitizedSession.sessionDate)
+        assertEquals(false, sanitizedSession.isRescheduled)
+        assertEquals("", sanitizedSession.rescheduledReason)
+
+        val unitsJson = obj.get("units")
+        val unitType = object : com.google.gson.reflect.TypeToken<List<AttendanceUnitEntity>>() {}.type
+        val parsedUnits: List<AttendanceUnitEntity> = Gson().fromJson(unitsJson, unitType)
+        assertEquals(1, parsedUnits.size)
+        val sanitizedUnit = ExportImportUtils.sanitizeUnit(parsedUnits[0], 201)
+        assertEquals("PRESENT", sanitizedUnit.status)
+
+        val holidaysJson = obj.get("holidays")
+        val holType = object : com.google.gson.reflect.TypeToken<List<com.agupta07505.attendsmartly.data.local.entity.HolidayEntity>>() {}.type
+        val parsedHolidays: List<com.agupta07505.attendsmartly.data.local.entity.HolidayEntity> = Gson().fromJson(holidaysJson, holType)
+        assertEquals(1, parsedHolidays.size)
+        val sanitizedHoliday = ExportImportUtils.sanitizeHoliday(parsedHolidays[0])
+        assertEquals("Independence Day", sanitizedHoliday.title)
+        assertEquals("2026-08-15", sanitizedHoliday.date)
+    }
+
+    @Test
     fun testFullBackupRoundTripSerialization() {
         val subject = SubjectEntity(
             id = 10,
@@ -163,5 +303,99 @@ class ExportImportUtilsTest {
         assertEquals("ABSENT", deserialized.units[1].status)
         assertEquals(1, deserialized.holidays.size)
         assertEquals("Independence Day", deserialized.holidays[0].title)
+    }
+
+    @Test
+    fun testImportActualHelperBackupFile() {
+        val backupFile = java.io.File("A:\\AttendSmartly\\helper\\AttendSmartly_backup.json")
+        if (backupFile.exists()) {
+            val jsonContent = backupFile.readText()
+            val gson = Gson()
+            val backup = gson.fromJson(jsonContent, com.agupta07505.attendsmartly.util.AttendSmartlyBackup::class.java)
+
+            org.junit.Assert.assertNotNull(backup)
+            assertTrue("Should contain subjects", backup.subjects.isNotEmpty())
+            assertTrue("Should contain timetable entries", backup.timetableEntries.isNotEmpty())
+            assertTrue("Should contain sessions", backup.sessions.isNotEmpty())
+            assertTrue("Should contain units", backup.units.isNotEmpty())
+
+            // Sanitize all entities to ensure no NPE or SQLite constraints
+            val sanitizedSubjects = backup.subjects.map { ExportImportUtils.sanitizeSubject(it) }
+            val sanitizedTimetable = backup.timetableEntries.map { ExportImportUtils.sanitizeTimetableEntry(it) }
+            val sanitizedSessions = backup.sessions.map { ExportImportUtils.sanitizeSession(it) }
+            val sanitizedUnits = backup.units.map { ExportImportUtils.sanitizeUnit(it, it.sessionId) }
+
+            assertEquals(backup.subjects.size, sanitizedSubjects.size)
+            assertEquals(backup.timetableEntries.size, sanitizedTimetable.size)
+            assertEquals(backup.sessions.size, sanitizedSessions.size)
+            assertEquals(backup.units.size, sanitizedUnits.size)
+        }
+    }
+
+    @Test
+    fun testMalformedJsonWithCorruptedHeaderRecovery() {
+        val corruptedJson = """
+            {
+              "exportedAt": 1787195259305,
+              "holidays": [],
+              "sessions": [],
+              "subjects": [],
+              "timetableEntries": [],
+              "units": [],
+              "version": 1
+            }ctedUnitCount": 1,
+                  "id": 177,
+                  "notes": "",
+                  "sessionDate": "2026-10-08",
+                  "startTime": "10:00",
+                  "subjectId": 75,
+                  "timetableEntryId": 204,
+                  "updatedAt": 1786595641840
+                }
+              ],
+              "subjects": [
+                {
+                  "id": 75,
+                  "name": "COA",
+                  "targetPercentage": 75.0
+                }
+              ],
+              "timetableEntries": [
+                {
+                  "id": 204,
+                  "subjectId": 75,
+                  "dayOfWeek": 4,
+                  "startTime": "10:00",
+                  "endTime": "11:00"
+                }
+              ],
+              "units": [
+                {
+                  "id": 1,
+                  "sessionId": 177,
+                  "unitIndex": 0,
+                  "status": "PRESENT"
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val repaired = ExportImportUtils.autoRepairJson(corruptedJson)
+        val subjects = mutableListOf<SubjectEntity>()
+        val timetable = mutableListOf<TimetableEntryEntity>()
+        val sessions = mutableListOf<AttendanceSessionEntity>()
+        val units = mutableListOf<AttendanceUnitEntity>()
+        val holidays = mutableListOf<HolidayEntity>()
+
+        ExportImportUtils.extractEntitiesFromMalformedJson(repaired, subjects, timetable, sessions, units, holidays)
+
+        assertEquals(1, subjects.size)
+        assertEquals("COA", subjects[0].name)
+        assertEquals(1, timetable.size)
+        assertEquals(204L, timetable[0].id)
+        assertEquals(1, sessions.size)
+        assertEquals("2026-10-08", sessions[0].sessionDate)
+        assertEquals(1, units.size)
+        assertEquals("PRESENT", units[0].status)
     }
 }

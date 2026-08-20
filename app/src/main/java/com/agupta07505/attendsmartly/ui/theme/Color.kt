@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -72,4 +72,25 @@ val SubjectPalette = listOf(
     Color(0xFF43A047), // Green
     Color(0xFF3949AB), // Indigo
     Color(0xFF00ACC1)  // Cyan
+)
+
+data class PresetThemeColor(
+    val hex: String,
+    val name: String,
+    val color: Color
+)
+
+val PresetThemeColors = listOf(
+    PresetThemeColor("#6750A4", "Purple (Default)", Color(0xFF6750A4)),
+    PresetThemeColor("#00639B", "Ocean Blue", Color(0xFF00639B)),
+    PresetThemeColor("#006C51", "Emerald Green", Color(0xFF006C51)),
+    PresetThemeColor("#984061", "Crimson Ruby", Color(0xFF984061)),
+    PresetThemeColor("#825500", "Sunset Amber", Color(0xFF825500)),
+    PresetThemeColor("#3F51B5", "Royal Indigo", Color(0xFF3F51B5)),
+    PresetThemeColor("#006972", "Deep Teal", Color(0xFF006972)),
+    PresetThemeColor("#B81B6C", "Vivid Rose", Color(0xFFB81B6C)),
+    PresetThemeColor("#00838F", "Electric Cyan", Color(0xFF00838F)),
+    PresetThemeColor("#D84315", "Flame Orange", Color(0xFFD84315)),
+    PresetThemeColor("#2E7D32", "Forest Green", Color(0xFF2E7D32)),
+    PresetThemeColor("#455A64", "Midnight Slate", Color(0xFF455A64))
 )

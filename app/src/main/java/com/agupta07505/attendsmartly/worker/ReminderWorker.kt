@@ -36,9 +36,19 @@ class ReminderWorker(
             }
 
             val todayIso = DateUtils.todayIso()
+
+            if (userPrefs.trackBySemester) {
+                if (userPrefs.semesterStartDate.isNotBlank() && todayIso < userPrefs.semesterStartDate) {
+                    return Result.success()
+                }
+                if (userPrefs.semesterEndDate.isNotBlank() && todayIso > userPrefs.semesterEndDate) {
+                    return Result.success()
+                }
+            }
+
             val dayOfWeek = DateUtils.getDayOfWeekInt(todayIso)
 
-            val activeTimetable = repository.getTimetableForDay(dayOfWeek).first()
+            val activeTimetable = repository.getTimetableForDay(dayOfWeek, todayIso).first()
             val now = LocalTime.now()
             val today = LocalDate.now()
 

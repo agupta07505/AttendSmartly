@@ -5,7 +5,7 @@ All notable changes to **AttendSmartly** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] - 2026-08-20
+## [2.0.0] - 2026-08-20
 
 ### Added
 - 🔀 **Class Rescheduling & Extra Class Scheduler**:
@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - **Appearance & Theme**: Responsive 3-option theme cards (System, Light, Dark) and Dynamic Material 3 wallpaper-based colors toggle.
     - **AI & Timetable Scanner**: Gemini API key configuration with show/hide toggle and direct link to Google AI Studio.
     - **Data Management & Backup**: JSON backup export & restore, CSV attendance reports, and full data reset with safety confirmations.
-    - **About & Updates**: App version `v1.2` badge (Build code), release notes summary, GitHub updates check, license details (GNU GPL v3), and developer info.
+    - **About & Updates**: App version `v2.0` badge (Build code), release notes summary, GitHub updates check, license details (GNU GPL v3), and developer info.
   - Smooth animated slide transitions and back button handling between sub-windows.
 
 ### Changed

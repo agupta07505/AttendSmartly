@@ -68,6 +68,9 @@ fun HomeScreen(
     var showFabMenu by remember { mutableStateOf(false) }
     var showDatePickerDialog by remember { mutableStateOf(false) }
 
+    val userPreferences by viewModel.userPreferences.collectAsState()
+    val isSelectedDateInSemester by viewModel.isSelectedDateInSemester.collectAsState()
+
     val greeting = remember {
         val hour = LocalTime.now().hour
         when (hour) {
@@ -80,6 +83,25 @@ fun HomeScreen(
 
     val selectedDate = remember(selectedDateIso) {
         try { LocalDate.parse(selectedDateIso, DateUtils.isoDateFormatter) } catch (e: Exception) { LocalDate.now() }
+    }
+
+    // Auto-adjust date if outside semester when trackBySemester is enabled
+    LaunchedEffect(userPreferences.trackBySemester, userPreferences.semesterStartDate, userPreferences.semesterEndDate) {
+        if (userPreferences.trackBySemester && userPreferences.semesterStartDate.isNotBlank() && userPreferences.semesterEndDate.isNotBlank()) {
+            try {
+                val start = LocalDate.parse(userPreferences.semesterStartDate, DateUtils.isoDateFormatter)
+                val end = LocalDate.parse(userPreferences.semesterEndDate, DateUtils.isoDateFormatter)
+                val current = LocalDate.parse(selectedDateIso, DateUtils.isoDateFormatter)
+                val today = LocalDate.now()
+                if (current.isBefore(start)) {
+                    val target = if (!today.isBefore(start) && !today.isAfter(end)) today else start
+                    viewModel.selectDate(target.format(DateUtils.isoDateFormatter))
+                } else if (current.isAfter(end)) {
+                    val target = if (!today.isBefore(start) && !today.isAfter(end)) today else end
+                    viewModel.selectDate(target.format(DateUtils.isoDateFormatter))
+                }
+            } catch (_: Exception) {}
+        }
     }
 
     Scaffold(
@@ -178,14 +200,36 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Horizontal Date Selector (Wide Range: -30 days to +14 days relative to selectedDate/today)
-            val dates = remember(selectedDateIso) {
-                val base = selectedDate.minusDays(20)
-                (0..35).map { base.plusDays(it.toLong()) }
+            // Horizontal Date Selector (Bounded by semester if enabled, otherwise relative wide range)
+            val dates = remember(selectedDateIso, userPreferences.trackBySemester, userPreferences.semesterStartDate, userPreferences.semesterEndDate) {
+                if (userPreferences.trackBySemester && userPreferences.semesterStartDate.isNotBlank() && userPreferences.semesterEndDate.isNotBlank()) {
+                    try {
+                        val start = LocalDate.parse(userPreferences.semesterStartDate, DateUtils.isoDateFormatter)
+                        val end = LocalDate.parse(userPreferences.semesterEndDate, DateUtils.isoDateFormatter)
+                        if (!end.isBefore(start)) {
+                            val days = java.time.temporal.ChronoUnit.DAYS.between(start, end).toInt()
+                            if (days in 0..365) {
+                                (0..days).map { start.plusDays(it.toLong()) }
+                            } else {
+                                val base = selectedDate.minusDays(20)
+                                (0..35).map { base.plusDays(it.toLong()) }
+                            }
+                        } else {
+                            val base = selectedDate.minusDays(20)
+                            (0..35).map { base.plusDays(it.toLong()) }
+                        }
+                    } catch (e: Exception) {
+                        val base = selectedDate.minusDays(20)
+                        (0..35).map { base.plusDays(it.toLong()) }
+                    }
+                } else {
+                    val base = selectedDate.minusDays(20)
+                    (0..35).map { base.plusDays(it.toLong()) }
+                }
             }
             val dateRowState = rememberLazyListState()
 
-            LaunchedEffect(selectedDateIso) {
+            LaunchedEffect(selectedDateIso, dates) {
                 val index = dates.indexOfFirst { it.format(DateUtils.isoDateFormatter) == selectedDateIso }
                 if (index >= 0) {
                     dateRowState.animateScrollToItem((index - 2).coerceAtLeast(0))
@@ -248,6 +292,43 @@ fun HomeScreen(
                 contentPadding = PaddingValues(bottom = 80.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Out of semester banner
+                if (!isSelectedDateInSemester) {
+                    item {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.EventBusy,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column {
+                                    Text(
+                                        "Outside Active Semester",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    Text(
+                                        "Semester range: ${userPreferences.semesterStartDate} to ${userPreferences.semesterEndDate}. Attendance marking is paused for this date.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Overall Progress Summary Card - Clean view without Safe Bunk and Goal Status
                 item {
                     AttendanceProgressCard(
@@ -323,19 +404,49 @@ fun HomeScreen(
                             session = item.session,
                             units = item.units,
                             onMarkPresent = {
-                                viewModel.markPresent(item)
+                                if (isSelectedDateInSemester) {
+                                    viewModel.markPresent(item)
+                                } else {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Cannot mark attendance outside semester range.")
+                                    }
+                                }
                             },
                             onMarkAbsent = {
-                                viewModel.markAbsent(item)
+                                if (isSelectedDateInSemester) {
+                                    viewModel.markAbsent(item)
+                                } else {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Cannot mark attendance outside semester range.")
+                                    }
+                                }
                             },
                             onMarkBunked = {
-                                viewModel.markBunked(item)
+                                if (isSelectedDateInSemester) {
+                                    viewModel.markBunked(item)
+                                } else {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Cannot mark attendance outside semester range.")
+                                    }
+                                }
                             },
                             onMarkCancelled = {
-                                viewModel.markCancelled(item)
+                                if (isSelectedDateInSemester) {
+                                    viewModel.markCancelled(item)
+                                } else {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Cannot mark attendance outside semester range.")
+                                    }
+                                }
                             },
                             onResetSession = {
-                                viewModel.resetSession(item)
+                                if (isSelectedDateInSemester) {
+                                    viewModel.resetSession(item)
+                                } else {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Cannot modify attendance outside semester range.")
+                                    }
+                                }
                             },
                             onMoreOptions = {
                                 activeSheetItem = item

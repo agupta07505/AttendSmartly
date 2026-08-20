@@ -13,14 +13,17 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TimetableDao {
+    @Query("SELECT * FROM timetable_entries WHERE (isActive = 1 OR isActive IS NULL) AND (endDate IS NULL OR trim(endDate) = '' OR endDate >= :currentDate) ORDER BY startTime ASC")
+    fun getAllActiveEntries(currentDate: String): Flow<List<TimetableEntryEntity>>
+
     @Query("SELECT * FROM timetable_entries WHERE (isActive = 1 OR isActive IS NULL) ORDER BY startTime ASC")
-    fun getAllActiveEntries(): Flow<List<TimetableEntryEntity>>
+    fun getAllActiveEntriesRaw(): Flow<List<TimetableEntryEntity>>
 
     @Query("SELECT * FROM timetable_entries ORDER BY startTime ASC")
     fun getAllEntries(): Flow<List<TimetableEntryEntity>>
 
-    @Query("SELECT * FROM timetable_entries WHERE dayOfWeek = :dayOfWeek AND (isActive = 1 OR isActive IS NULL) ORDER BY startTime ASC")
-    fun getEntriesForDay(dayOfWeek: Int): Flow<List<TimetableEntryEntity>>
+    @Query("SELECT * FROM timetable_entries WHERE dayOfWeek = :dayOfWeek AND (isActive = 1 OR isActive IS NULL) AND (endDate IS NULL OR trim(endDate) = '' OR endDate >= :currentDate) ORDER BY startTime ASC")
+    fun getEntriesForDay(dayOfWeek: Int, currentDate: String): Flow<List<TimetableEntryEntity>>
 
     @Query("SELECT * FROM timetable_entries WHERE dayOfWeek = :dayOfWeek AND (startDate IS NULL OR trim(startDate) = '' OR startDate <= :date) AND (endDate IS NULL OR trim(endDate) = '' OR endDate >= :date) AND (isActive = 1 OR isActive IS NULL) ORDER BY startTime ASC")
     fun getEntriesForDayAndDate(dayOfWeek: Int, date: String): Flow<List<TimetableEntryEntity>>
