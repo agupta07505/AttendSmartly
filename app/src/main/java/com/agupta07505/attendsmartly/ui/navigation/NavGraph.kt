@@ -51,6 +51,18 @@ fun NavGraph(
     val showBottomBar = currentRoute in Screen.bottomNavItems.map { it.route }
     val initialRoute = remember { if (!userPreferences.onboardingCompleted) Screen.Onboarding.route else Screen.Home.route }
 
+    fun navigateToTab(route: String) {
+        if (currentRoute != route) {
+            navController.navigate(route) {
+                popUpTo(Screen.Home.route) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
@@ -61,15 +73,7 @@ fun NavGraph(
                         NavigationBarItem(
                             selected = selected,
                             onClick = {
-                                if (currentRoute != screen.route) {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                }
+                                navigateToTab(screen.route)
                             },
                             icon = {
                                 screen.icon?.let { Icon(it, contentDescription = screen.title) }
@@ -144,8 +148,8 @@ fun NavGraph(
                 val homeVm: HomeViewModel = getViewModel { app -> HomeViewModel(app.repository, app.userPreferencesRepository) }
                 HomeScreen(
                     viewModel = homeVm,
-                    onNavigateToAddSubject = { navController.navigate(Screen.Subjects.route) },
-                    onNavigateToAddTimetable = { navController.navigate(Screen.Timetable.route) },
+                    onNavigateToAddSubject = { navigateToTab(Screen.Subjects.route) },
+                    onNavigateToAddTimetable = { navigateToTab(Screen.Timetable.route) },
                     onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
                 )
             }
@@ -156,9 +160,7 @@ fun NavGraph(
                     viewModel = timetableVm,
                     onNavigateBack = {
                         if (!navController.popBackStack()) {
-                            navController.navigate(Screen.Home.route) {
-                                popUpTo(Screen.Home.route) { inclusive = true }
-                            }
+                            navigateToTab(Screen.Home.route)
                         }
                     }
                 )
@@ -173,9 +175,7 @@ fun NavGraph(
                     },
                     onNavigateBack = {
                         if (!navController.popBackStack()) {
-                            navController.navigate(Screen.Home.route) {
-                                popUpTo(Screen.Home.route) { inclusive = true }
-                            }
+                            navigateToTab(Screen.Home.route)
                         }
                     }
                 )
@@ -195,7 +195,12 @@ fun NavGraph(
 
             composable(Screen.Analytics.route) {
                 val analyticsVm: AnalyticsViewModel = getViewModel { app -> AnalyticsViewModel(app.repository, app.userPreferencesRepository) }
-                AnalyticsScreen(viewModel = analyticsVm)
+                AnalyticsScreen(
+                    viewModel = analyticsVm,
+                    onNavigateToSubjectDetail = { subId ->
+                        navController.navigate(Screen.SubjectDetail.createRoute(subId))
+                    }
+                )
             }
 
             composable(Screen.History.route) {
@@ -205,7 +210,10 @@ fun NavGraph(
 
             composable(Screen.Settings.route) {
                 val settingsVm: SettingsViewModel = getViewModel { app -> SettingsViewModel(app.repository, app.userPreferencesRepository) }
-                SettingsScreen(viewModel = settingsVm)
+                SettingsScreen(
+                    viewModel = settingsVm,
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
         }
     }

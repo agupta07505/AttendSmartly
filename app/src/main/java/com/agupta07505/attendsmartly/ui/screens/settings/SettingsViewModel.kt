@@ -18,6 +18,7 @@ import com.agupta07505.attendsmartly.util.DemoDataGenerator
 import com.agupta07505.attendsmartly.util.ExportImportUtils
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -117,4 +118,20 @@ class SettingsViewModel(
             onComplete()
         }
     }
+
+    private val _isCheckingUpdate = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val isCheckingUpdate: StateFlow<Boolean> = _isCheckingUpdate.asStateFlow()
+
+    fun checkForUpdates(currentVersion: String, onResult: (Result<com.agupta07505.attendsmartly.util.GitHubReleaseInfo?>) -> Unit) {
+        viewModelScope.launch {
+            _isCheckingUpdate.value = true
+            try {
+                val result = com.agupta07505.attendsmartly.util.GitHubUpdateChecker.checkForUpdates(currentVersion)
+                onResult(result)
+            } finally {
+                _isCheckingUpdate.value = false
+            }
+        }
+    }
 }
+

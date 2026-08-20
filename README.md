@@ -44,9 +44,11 @@ College academic rules often demand a mandatory minimum attendance threshold (e.
 
 ## ✨ Key Features
 
-### 📅 Smart Weekly Timetable Scheduling
+### 📅 Smart Weekly Timetable & Class Rescheduling
 - Configure recurring daily classes, room numbers, instructor names, and specific class types (Lecture, Practical Lab, Tutorial).
-- Flexible day-by-day scheduler with instant daily agenda views.
+- **Extra Class Scheduler**: Add one-off or compensatory extra classes to any date with custom unit counts without altering your recurring weekly timetable.
+- **Class Rescheduling**: Move any scheduled class to a new date and time with reason notes, metadata indicators, and instant one-tap revert capability.
+- Quick action speed dial on Home screen for Extra Classes, Rescheduling, Adding Subjects, and Adding Timetable Entries.
 
 ### ⏱️ Multi-Hour & Partial Unit Tracking
 - Real-world college classes aren't always 1 hour. Set custom unit values per class (e.g., a 2-hour lecture = 2 units, a 3-hour practical lab = 1 unit).
@@ -59,19 +61,21 @@ College academic rules often demand a mandatory minimum attendance threshold (e.
 ### 📷 Smart Timetable OCR Scanner & Flexible Onboarding
 - Import your timetable from a photo or document image.
 - Powered by the Google Gemini Vision API to automatically parse subjects, timings, and days into your schedule.
-- Multi-option onboarding setup (Upload Timetable via OCR, Load Demo Data, or Manual Setup) with Gemini API key input and visibility toggle.
+- Multi-option onboarding setup (Upload Timetable via OCR or Manual Setup) with Gemini API key input and visibility toggle.
 
 ### 🔔 Automated Class Reminders & Notification Settings
 - Background notification alarms powered by Android `AlarmManager` and `WorkManager` featuring room number and instructor metadata.
 - Receive timely pre-class notifications with one-tap attendance logging actions.
-- Full notification control in Settings: customize reminder switches, notification sound, vibration feedback, and Android 13+ runtime permissions.
+- Full notification control in Settings: customize reminder switches, notification sound chimes, vibration feedback, and Android 13+ runtime permissions.
 
 ### 📊 Comprehensive Analytics & History Logs
 - Interactive Material 3 progress cards, status breakdown chips, and donut charts.
 - Editable historical logs allowing you to modify past attendance entries at any time.
 
-### 📦 Offline-First JSON Backups & CSV Reports
-- Export and import full JSON timetable backups via Android's Storage Access Framework (SAF).
+### ⚙️ Modular Settings & Data Backups
+- Organized into 6 dedicated sub-windows: **Attendance Rules & Goals**, **Notifications & Alerts**, **Appearance & Theme**, **AI & Timetable Scanner**, **Data Management & Backup**, and **About & Updates**.
+- Quick target percentage chips (`70%`, `75%`, `80%`, `85%`, `90%`), reminder lead time chips (`5m`, `10m`, `15m`, `30m`), and native Material `DatePickerDialog` for semester calendar dates.
+- Export and import full JSON timetable backups via Android's Storage Access Framework (SAF) with 100% roundtrip fidelity.
 - Generate detailed CSV attendance reports for spreadsheet analysis or academic record-keeping.
 
 ---
@@ -117,21 +121,15 @@ $$
 ## 📱 Screenshots
 
 <div align="center">
-  <img src="assets/screenshots/home_dashboard.jpg" width="200"/>
-  <img src="assets/screenshots/weekly_timetable.jpg" width="200"/>
-  <img src="assets/screenshots/mark_past_attendance.jpg" width="200"/>
-  <img src="assets/screenshots/subjects_list.jpg" width="200"/>
-  <br/>
-  <img src="assets/screenshots/subject_details.jpg" width="200"/>
-  <img src="assets/screenshots/attendance_analytics.jpg" width="200"/>
-  <img src="assets/screenshots/subject_wise_progress.jpg" width="200"/>
-  <img src="assets/screenshots/settings_top.jpg" width="200"/>
-  <br/>
-  <img src="assets/screenshots/settings_bottom.jpg" width="200"/>
-  <!-- <img src="assets/screenshots/date_picker.jpg" width="200"/> -->
-  <img src="assets/screenshots/add_new_subject.jpg" width="200"/>
-  <img src="assets/screenshots/ai_timetable_scanner.jpg" width="200"/>
-  <img src="assets/screenshots/review_extracted_schedule.jpg" width="200"/>
+  <img src="assets/screenshots/home_dashboard.jpg" width="200" alt="Home Dashboard & Speed Dial"/>
+  <img src="assets/screenshots/reschedule_class.jpg" width="200" alt="Reschedule Class Dialog"/>
+  <img src="assets/screenshots/weekly_timetable.jpg" width="200" alt="Weekly Timetable"/>
+  <img src="assets/screenshots/subjects_list.jpg" width="200" alt="Subjects List"/>
+  <br/><br/>
+  <img src="assets/screenshots/subject_details.jpg" width="200" alt="Subject Details & Circular Gauge"/>
+  <img src="assets/screenshots/attendance_analytics.jpg" width="200" alt="Attendance Analytics"/>
+  <img src="assets/screenshots/subject_wise_progress.jpg" width="200" alt="Subject-Wise Progress"/>
+  <img src="assets/screenshots/settings_overview.jpg" width="200" alt="Modular Settings Overview"/>
 </div>
 
 ---

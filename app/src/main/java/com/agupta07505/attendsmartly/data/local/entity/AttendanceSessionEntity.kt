@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -37,6 +37,12 @@ data class AttendanceSessionEntity(
     val endTime: String,     // e.g. "12:00"
     val expectedUnitCount: Int = 1,
     val notes: String = "",
+    val isRescheduled: Boolean = false,
+    val originalDate: String? = null, // e.g. "2026-08-19" if this was rescheduled from another date
+    val originalTime: String? = null, // e.g. "10:00"
+    val rescheduledToDate: String? = null, // e.g. "2026-08-20" if this session was rescheduled to another date
+    val rescheduledToTime: String? = null, // e.g. "14:00"
+    val rescheduledReason: String = "",
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

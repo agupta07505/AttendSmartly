@@ -11,8 +11,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,7 +28,8 @@ import kotlin.math.roundToInt
 @Composable
 fun AttendanceProgressCard(
     summary: AttendanceSummary,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showSafeBunksAndGoal: Boolean = true
 ) {
     val isAboveTarget = summary.percentage >= summary.targetPercentage
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -106,111 +107,113 @@ fun AttendanceProgressCard(
             }
         }
 
-        // Secondary Bento Row (2 Grid Tiles)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Tile 1: Safe Bunks / Required Classes
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(115.dp),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+        // Secondary Bento Row (2 Grid Tiles) - Optional (shown in Analytics, omitted on Home)
+        if (showSafeBunksAndGoal) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(
+                // Tile 1: Safe Bunks / Required Classes
+                Card(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.SpaceBetween
+                        .weight(1f)
+                        .height(115.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
-                    Text(
-                        text = if (isAboveTarget) "SAFE BUNKS" else "REQUIRED",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Column {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Text(
-                            text = if (isAboveTarget) "${summary.safeBunks}" else "${summary.requiredUnitsToTarget}",
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = if (isAboveTarget) {
-                                if (summary.safeBunks > 0) "Classes can be missed" else "At target limit (0 bunks left)"
-                            } else {
-                                "Consecutive to attend"
-                            },
+                            text = if (isAboveTarget) "SAFE BUNKS" else "REQUIRED",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    }
-                }
-            }
-
-            // Tile 2: Goal Status
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(115.dp),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "GOAL STATUS",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isAboveTarget) Icons.Default.Shield else Icons.Default.TrendingUp,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = if (isAboveTarget) primaryColor else MaterialTheme.colorScheme.error
-                            )
+                        Column {
                             Text(
-                                text = if (isAboveTarget) "On Track" else "Needs Work",
-                                style = MaterialTheme.typography.titleMedium,
+                                text = if (isAboveTarget) "${summary.safeBunks}" else "${summary.requiredUnitsToTarget}",
+                                style = MaterialTheme.typography.headlineLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
+                            Text(
+                                text = if (isAboveTarget) {
+                                    if (summary.safeBunks > 0) "Classes can be missed" else "At target limit (0 bunks left)"
+                                } else {
+                                    "Consecutive to attend"
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
                         }
-                        LinearProgressIndicator(
-                            progress = { (summary.percentage / 100.0).toFloat().coerceIn(0f, 1f) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(6.dp),
-                            color = primaryColor,
-                            trackColor = MaterialTheme.colorScheme.outlineVariant
-                        )
+                    }
+                }
+
+                // Tile 2: Goal Status
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(115.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Text(
-                            text = "Target: ${summary.targetPercentage.roundToInt()}%",
+                            text = "GOAL STATUS",
                             style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isAboveTarget) Icons.Default.Shield else Icons.AutoMirrored.Filled.TrendingUp,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = if (isAboveTarget) primaryColor else MaterialTheme.colorScheme.error
+                                )
+                                Text(
+                                    text = if (isAboveTarget) "On Track" else "Needs Work",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            LinearProgressIndicator(
+                                progress = { (summary.percentage / 100.0).toFloat().coerceIn(0f, 1f) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp),
+                                color = primaryColor,
+                                trackColor = MaterialTheme.colorScheme.outlineVariant
+                            )
+                            Text(
+                                text = "Target: ${summary.targetPercentage.roundToInt()}%",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }

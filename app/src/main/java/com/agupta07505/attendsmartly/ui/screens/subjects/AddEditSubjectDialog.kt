@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -17,10 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +29,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.agupta07505.attendsmartly.data.local.entity.SubjectEntity
 import com.agupta07505.attendsmartly.domain.calculator.AttendanceCalculator
 import com.agupta07505.attendsmartly.domain.model.SubjectType
@@ -103,296 +103,361 @@ fun AddEditSubjectDialog(
         AttendanceCalculator.calculateAttendanceUnits(dur, unitMins)
     }
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = if (initialSubject == null) "Add New Subject" else "Edit Subject",
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.90f)
+                .padding(vertical = 12.dp)
+                .systemBarsPadding(),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
+        ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .fillMaxSize()
+                    .padding(20.dp)
             ) {
-                // Name Input
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Subject Name*") },
-                    placeholder = { Text("Database Management Systems") },
-                    leadingIcon = { Icon(Icons.Default.Book, null) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("subject_name_input")
-                )
-
-                // Code Input
-                OutlinedTextField(
-                    value = code,
-                    onValueChange = { code = it },
-                    label = { Text("Subject Code") },
-                    placeholder = { Text("CS301") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Subject Type Dropdown
-                ExposedDropdownMenuBox(
-                    expanded = showTypeDropdown,
-                    onExpandedChange = { showTypeDropdown = it }
+                // Header Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedTextField(
-                        value = type,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Subject Type") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTypeDropdown) },
-                        modifier = Modifier
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
-                            .fillMaxWidth()
-                    )
-
-                    ExposedDropdownMenu(
-                        expanded = showTypeDropdown,
-                        onDismissRequest = { showTypeDropdown = false }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        typesList.forEach { t ->
-                            DropdownMenuItem(
-                                text = { Text(t) },
-                                onClick = {
-                                    type = t
-                                    showTypeDropdown = false
-                                }
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(selectedColor.toInt()).copy(alpha = 0.2f)
+                        ) {
+                            Icon(
+                                Icons.Default.Book,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(8.dp)
+                                    .size(24.dp),
+                                tint = Color(selectedColor.toInt())
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = if (initialSubject == null) "Add New Subject" else "Edit Subject",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Subject details, color, and attendance unit rules",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
+
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
                 }
 
-                // Color Selection Section
-                Text(
-                    text = "Subject Color Theme",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                // Scrollable Form Body
+                Column(
                     modifier = Modifier
+                        .weight(1f)
                         .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    SubjectPalette.forEach { color ->
-                        val colorVal = color.toArgb().toLong()
-                        val isSelected = selectedColor == colorVal
-                        Box(
+                    // Name Input
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Subject Name*") },
+                        placeholder = { Text("Database Management Systems") },
+                        leadingIcon = { Icon(Icons.Default.Book, null) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("subject_name_input")
+                    )
+
+                    // Code Input
+                    OutlinedTextField(
+                        value = code,
+                        onValueChange = { code = it },
+                        label = { Text("Subject Code") },
+                        placeholder = { Text("CS301") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Subject Type Dropdown
+                    ExposedDropdownMenuBox(
+                        expanded = showTypeDropdown,
+                        onExpandedChange = { showTypeDropdown = it }
+                    ) {
+                        OutlinedTextField(
+                            value = type,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Subject Type") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTypeDropdown) },
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(color)
-                                .border(
-                                    width = if (isSelected) 3.dp else 1.dp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                    shape = CircleShape
-                                )
-                                .clickable {
-                                    selectedColor = colorVal
-                                    hexInputText = formatColorToHex(colorVal)
-                                    val hsv = FloatArray(3)
-                                    android.graphics.Color.colorToHSV(colorVal.toInt(), hsv)
-                                    currentHue = hsv[0]
-                                },
-                            contentAlignment = Alignment.Center
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
+                                .fillMaxWidth()
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = showTypeDropdown,
+                            onDismissRequest = { showTypeDropdown = false }
                         ) {
-                            if (isSelected) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
+                            typesList.forEach { t ->
+                                DropdownMenuItem(
+                                    text = { Text(t) },
+                                    onClick = {
+                                        type = t
+                                        showTypeDropdown = false
+                                    }
                                 )
                             }
                         }
                     }
-                }
 
-                // Custom Color Selector Bar & Hex Input
-                Text(
-                    text = "Custom Color Selector Bar",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                val rainbowGradient = remember {
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color.Red,
-                            Color.Yellow,
-                            Color.Green,
-                            Color.Cyan,
-                            Color.Blue,
-                            Color.Magenta,
-                            Color.Red
-                        )
+                    // Color Selection Section
+                    Text(
+                        text = "Subject Color Theme",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        SubjectPalette.forEach { color ->
+                            val colorVal = color.toArgb().toLong()
+                            val isSelected = selectedColor == colorVal
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(color)
+                                    .border(
+                                        width = if (isSelected) 3.dp else 1.dp,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                        shape = CircleShape
+                                    )
+                                    .clickable {
+                                        selectedColor = colorVal
+                                        hexInputText = formatColorToHex(colorVal)
+                                        val hsv = FloatArray(3)
+                                        android.graphics.Color.colorToHSV(colorVal.toInt(), hsv)
+                                        currentHue = hsv[0]
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(16.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(rainbowGradient)
-                )
+                    // Custom Color Selector Bar & Hex Input
+                    Text(
+                        text = "Custom Color Selector Bar",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
 
-                Slider(
-                    value = currentHue,
-                    onValueChange = { newHue ->
-                        currentHue = newHue
-                        val newColor = colorFromHue(newHue)
-                        val colorVal = newColor.toArgb().toLong()
-                        selectedColor = colorVal
-                        hexInputText = formatColorToHex(colorVal)
-                    },
-                    valueRange = 0f..360f,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    val rainbowGradient = remember {
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color.Red,
+                                Color.Yellow,
+                                Color.Green,
+                                Color.Cyan,
+                                Color.Blue,
+                                Color.Magenta,
+                                Color.Red
+                            )
+                        )
+                    }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
                     Box(
                         modifier = Modifier
-                            .size(42.dp)
-                            .clip(CircleShape)
-                            .background(Color(selectedColor.toInt()))
-                            .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                            .fillMaxWidth()
+                            .height(16.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(rainbowGradient)
                     )
 
-                    OutlinedTextField(
-                        value = hexInputText,
-                        onValueChange = { newText ->
-                            hexInputText = newText
-                            val parsed = parseHexToColor(newText)
-                            if (parsed != null) {
-                                selectedColor = parsed
-                                val hsv = FloatArray(3)
-                                android.graphics.Color.colorToHSV(parsed.toInt(), hsv)
-                                currentHue = hsv[0]
-                            }
+                    Slider(
+                        value = currentHue,
+                        onValueChange = { newHue ->
+                            currentHue = newHue
+                            val newColor = colorFromHue(newHue)
+                            val colorVal = newColor.toArgb().toLong()
+                            selectedColor = colorVal
+                            hexInputText = formatColorToHex(colorVal)
                         },
-                        label = { Text("Custom Color (HEX Code)") },
-                        placeholder = { Text("#1E88E5") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
+                        valueRange = 0f..360f,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                }
 
-                // Teacher & Room
-                OutlinedTextField(
-                    value = teacherName,
-                    onValueChange = { teacherName = it },
-                    label = { Text("Teacher Name") },
-                    leadingIcon = { Icon(Icons.Default.Person, null) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(Color(selectedColor.toInt()))
+                                .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                        )
 
-                OutlinedTextField(
-                    value = room,
-                    onValueChange = { room = it },
-                    label = { Text("Default Classroom") },
-                    leadingIcon = { Icon(Icons.Default.LocationOn, null) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                        OutlinedTextField(
+                            value = hexInputText,
+                            onValueChange = { newText ->
+                                hexInputText = newText
+                                val parsed = parseHexToColor(newText)
+                                if (parsed != null) {
+                                    selectedColor = parsed
+                                    val hsv = FloatArray(3)
+                                    android.graphics.Color.colorToHSV(parsed.toInt(), hsv)
+                                    currentHue = hsv[0]
+                                }
+                            },
+                            label = { Text("Custom Color (HEX Code)") },
+                            placeholder = { Text("#1E88E5") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
 
-                HorizontalDivider()
-
-                Text(
-                    text = "Attendance Counting Rule",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+                    // Teacher & Room
                     OutlinedTextField(
-                        value = durationMinutesText,
-                        onValueChange = { durationMinutesText = it },
-                        label = { Text("Class Duration (mins)") },
+                        value = teacherName,
+                        onValueChange = { teacherName = it },
+                        label = { Text("Teacher Name (Optional)") },
+                        leadingIcon = { Icon(Icons.Default.Person, null) },
                         singleLine = true,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     OutlinedTextField(
-                        value = unitMinutesText,
-                        onValueChange = { unitMinutesText = it },
-                        label = { Text("1 Unit = (mins)") },
+                        value = room,
+                        onValueChange = { room = it },
+                        label = { Text("Default Classroom / Room (Optional)") },
+                        leadingIcon = { Icon(Icons.Default.LocationOn, null) },
                         singleLine = true,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
-                }
 
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                ) {
+                    HorizontalDivider()
+
                     Text(
-                        text = "Calculated Attendance Units: $computedUnits per class session",
-                        modifier = Modifier.padding(10.dp),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        text = "Attendance Counting Rule",
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = durationMinutesText,
+                            onValueChange = { durationMinutesText = it },
+                            label = { Text("Class Duration (mins)") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        OutlinedTextField(
+                            value = unitMinutesText,
+                            onValueChange = { unitMinutesText = it },
+                            label = { Text("1 Unit = (mins)") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                    ) {
+                        Text(
+                            text = "Calculated Attendance Units: $computedUnits per class session",
+                            modifier = Modifier.padding(10.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = targetText,
+                        onValueChange = { targetText = it },
+                        label = { Text("Target Attendance Percentage (%)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
 
-                OutlinedTextField(
-                    value = targetText,
-                    onValueChange = { targetText = it },
-                    label = { Text("Target Attendance Percentage (%)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val durationMins = durationMinutesText.toIntOrNull() ?: 60
-                    val unitMins = unitMinutesText.toIntOrNull() ?: 60
-                    val target = targetText.toDoubleOrNull() ?: 75.0
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
-                    val updated = (initialSubject ?: SubjectEntity(name = name.trim())).copy(
-                        name = name.trim(),
-                        code = code.trim(),
-                        type = type,
-                        teacherName = teacherName.trim(),
-                        room = room.trim(),
-                        colorValue = selectedColor,
-                        defaultSessionDurationMinutes = durationMins,
-                        attendanceUnitMinutes = unitMins,
-                        defaultAttendanceUnits = computedUnits,
-                        targetPercentage = target,
-                        updatedAt = System.currentTimeMillis()
-                    )
-                    onSave(updated)
-                },
-                enabled = name.isNotBlank(),
-                modifier = Modifier.testTag("save_subject_btn")
-            ) {
-                Text("Save Subject")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                // Bottom Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            val durationMins = durationMinutesText.toIntOrNull() ?: 60
+                            val unitMins = unitMinutesText.toIntOrNull() ?: 60
+                            val target = targetText.toDoubleOrNull() ?: 75.0
+
+                            val updated = (initialSubject ?: SubjectEntity(name = name.trim())).copy(
+                                name = name.trim(),
+                                code = code.trim(),
+                                type = type,
+                                teacherName = teacherName.trim(),
+                                room = room.trim(),
+                                colorValue = selectedColor,
+                                defaultSessionDurationMinutes = durationMins,
+                                attendanceUnitMinutes = unitMins,
+                                defaultAttendanceUnits = computedUnits,
+                                targetPercentage = target,
+                                updatedAt = System.currentTimeMillis()
+                            )
+                            onSave(updated)
+                        },
+                        enabled = name.isNotBlank(),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("save_subject_btn")
+                    ) {
+                        Text("Save Subject")
+                    }
+                }
             }
         }
-    )
+    }
 }

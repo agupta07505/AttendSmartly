@@ -5,6 +5,38 @@ All notable changes to **AttendSmartly** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-08-20
+
+### Added
+- 🔀 **Class Rescheduling & Extra Class Scheduler**:
+  - Added **Add Extra Class** quick action from the Home screen speed dial to schedule one-off or compensatory classes on any day with custom unit counts and times without altering recurring weekly timetables.
+  - Added **Reschedule Class** support to move any scheduled class to a new date/time with reason notes, incoming/outgoing reschedule indicator badges, and one-tap **Revert** capability.
+  - Context-aware speed dial on the Home screen displaying quick actions for Extra Classes, Rescheduling, Adding Subjects, and Adding Timetable Entries with smooth back navigation.
+- 🗂️ **Modular Sub-Window Settings Architecture**:
+  - Reorganized Settings into a high-level overview menu with 6 dedicated sub-windows:
+    - **Attendance Rules & Goals**: Target percentage slider with instant preset chips (`70%`, `75%`, `80%`, `85%`, `90%`), reminder lead time chips (`5m`, `10m`, `15m`, `30m`), and native Material `DatePickerDialog` for semester calendar dates.
+    - **Notifications & Alerts**: Master class reminders switch, Alert sound chime toggle, and Alert vibration feedback toggle with polished icon containers.
+    - **Appearance & Theme**: Responsive 3-option theme cards (System, Light, Dark) and Dynamic Material 3 wallpaper-based colors toggle.
+    - **AI & Timetable Scanner**: Gemini API key configuration with show/hide toggle and direct link to Google AI Studio.
+    - **Data Management & Backup**: JSON backup export & restore, CSV attendance reports, and full data reset with safety confirmations.
+    - **About & Updates**: App version `v1.2` badge (Build code), release notes summary, GitHub updates check, license details (GNU GPL v3), and developer info.
+  - Smooth animated slide transitions and back button handling between sub-windows.
+
+### Changed
+- 🎨 **UI & Component Polish**:
+  - Standardized unmarked "Present" button color to neutral `surfaceVariant`, eliminating visual confusion with marked states.
+  - Unified icon styling with rounded tinted surface containers for Alert Sound, Alert Vibration, and Dynamic Colors.
+  - Removed sample demo data option from Settings in favor of a clean, dedicated data reset workflow.
+  - Updated AutoMirrored vector icons across the app.
+
+### Fixed
+- 🐛 **Subject Visibility on Specific Dates**:
+  - Fixed session resolution where subject sessions were omitted on specific dates due to timetable entry matching; now links sessions by `timetableEntryId` with fallback to `(subjectId, startTime)`.
+  - Added `getSessionForSubjectDateAndTime` in `AttendanceDao` to prevent collisions when a subject has multiple classes on the same date (e.g. morning lecture and afternoon lab).
+- 💾 **JSON Backup Date Roundtrip Fidelity**:
+  - Fixed backup restore issue where blank timetable entry start dates were previously overwritten with `todayIso()`, preserving past and future timetable history across export and restore cycles.
+  - Handled `NULL` and empty string date bounds gracefully in Room SQL queries.
+
 ---
 
 ## [1.1.0] - 2026-08-06

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -14,7 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EventAvailable
@@ -59,7 +59,7 @@ fun SubjectDetailScreen(
                 title = { Text(subject?.name ?: "Subject Details", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -260,16 +260,49 @@ fun SubjectDetailScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(
-                                        text = DateUtils.formatDateToHuman(sess.sessionDate),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = DateUtils.formatDateToHuman(sess.sessionDate),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 15.sp
+                                        )
+                                        if (sess.isRescheduled) {
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = MaterialTheme.colorScheme.tertiaryContainer
+                                            ) {
+                                                Text(
+                                                    text = "RESCHEDULED",
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 9.sp,
+                                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                                )
+                                            }
+                                        }
+                                    }
                                     Text(
                                         text = "${DateUtils.formatTime(sess.startTime)} - ${DateUtils.formatTime(sess.endTime)}",
                                         fontSize = 12.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                    if (sess.isRescheduled && sess.originalDate != null) {
+                                        Text(
+                                            text = "Moved from ${DateUtils.formatDateToHuman(sess.originalDate)} (${DateUtils.formatTime(sess.originalTime ?: "")})${if (sess.rescheduledReason.isNotBlank()) " • ${sess.rescheduledReason}" else ""}",
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.tertiary
+                                        )
+                                    } else if (sess.rescheduledToDate != null) {
+                                        Text(
+                                            text = "Moved to ${DateUtils.formatDateToHuman(sess.rescheduledToDate)} (${DateUtils.formatTime(sess.rescheduledToTime ?: "")})${if (sess.rescheduledReason.isNotBlank()) " • ${sess.rescheduledReason}" else ""}",
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
 
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -346,73 +379,69 @@ fun SubjectDetailScreen(
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Info,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = "Auto-fills past classes as Present based on your timetable schedule, working backward from yesterday (Excludes today).",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                        }
-                    }
+                    Text(
+                        text = "Enter how many past classes you attended for ${subject?.name}. This will fill previous non-holiday schedule dates automatically.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
 
                     OutlinedTextField(
                         value = pastClassesInput,
-                        onValueChange = { input ->
-                            if (input.all { it.isDigit() }) {
-                                pastClassesInput = input
-                            }
-                        },
-                        label = { Text("Classes Already Attended") },
-                        placeholder = { Text("e.g. 12") },
+                        onValueChange = { pastClassesInput = it },
+                        label = { Text("Attended Classes Count") },
+                        placeholder = { Text("e.g. 10") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Today's classes are excluded from auto-fill.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (isProcessingPast) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
                         val count = pastClassesInput.toIntOrNull() ?: 0
-                        if (count <= 0) {
-                            Toast.makeText(context, "Please enter a valid count > 0", Toast.LENGTH_SHORT).show()
-                            return@Button
-                        }
-                        isProcessingPast = true
-                        viewModel.markPastAttendance(count) { success, msg ->
-                            isProcessingPast = false
-                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                            if (success) {
+                        if (count > 0) {
+                            isProcessingPast = true
+                            viewModel.markPastAttendance(count) { success, message ->
+                                isProcessingPast = false
                                 showMarkPastDialog = false
                                 pastClassesInput = ""
+                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                             }
+                        } else {
+                            Toast.makeText(context, "Please enter a valid count", Toast.LENGTH_SHORT).show()
                         }
                     },
                     enabled = !isProcessingPast && (pastClassesInput.toIntOrNull() ?: 0) > 0
                 ) {
-                    if (isProcessingPast) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        Text("Apply Attendance")
-                    }
+                    Text("Apply Past Attendance")
                 }
             },
             dismissButton = {

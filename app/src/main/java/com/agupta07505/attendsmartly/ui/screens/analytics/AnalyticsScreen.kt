@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -8,12 +8,14 @@
 package com.agupta07505.attendsmartly.ui.screens.analytics
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,7 +33,8 @@ import com.agupta07505.attendsmartly.ui.components.AttendanceProgressCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsScreen(
-    viewModel: AnalyticsViewModel
+    viewModel: AnalyticsViewModel,
+    onNavigateToSubjectDetail: (subjectId: Long) -> Unit = {}
 ) {
     val state by viewModel.analyticsState.collectAsState()
 
@@ -151,53 +154,174 @@ fun AnalyticsScreen(
                 }
             }
 
-            // Subject-wise Breakdown List
+            // Subject-wise Breakdown List Header
             item {
-                Text(
-                    text = "Subject-Wise Progress",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Subject-Wise Progress",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                    Text(
+                        text = "${state.subjectSummaries.size} Subjects",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
-            items(state.subjectSummaries) { item ->
-                val sub = item.subject
-                val summary = item.summary
-                val subColor = Color(sub.colorValue.toInt())
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+            if (state.subjectSummaries.isEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(subColor))
-                            Text(text = sub.name, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                            Text(
-                                text = "${String.format("%.1f", summary.percentage)}%",
-                                fontWeight = FontWeight.Bold,
-                                color = if (summary.percentage >= sub.targetPercentage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                            )
+                            Icon(Icons.Default.Book, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("No subjects added yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
+                    }
+                }
+            } else {
+                items(state.subjectSummaries, key = { it.subject.id }) { item ->
+                    val sub = item.subject
+                    val summary = item.summary
+                    val subColor = Color(sub.colorValue.toInt())
+                    val isAboveTarget = summary.percentage >= sub.targetPercentage
 
-                        LinearProgressIndicator(
-                            progress = { (summary.percentage / 100.0).toFloat().coerceIn(0f, 1f) },
-                            modifier = Modifier.fillMaxWidth().height(6.dp),
-                            color = if (summary.percentage >= sub.targetPercentage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                        )
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("analytics_subject_card_${sub.id}")
+                            .clickable { onNavigateToSubjectDetail(sub.id) },
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            // Subject Title Row
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(14.dp)
+                                        .clip(CircleShape)
+                                        .background(subColor)
+                                )
 
-                        Text(
-                            text = summary.statusMessage,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = sub.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    val subDetails = buildList {
+                                        if (sub.code.isNotBlank()) add(sub.code)
+                                        add(sub.type)
+                                        add("Target: ${sub.targetPercentage.toInt()}%")
+                                    }.joinToString(" • ")
+                                    Text(
+                                        text = subDetails,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "View Details",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+
+                            // Stats Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "${String.format("%.1f", summary.percentage)}%",
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isAboveTarget) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                    )
+                                    Text(
+                                        text = "${summary.presentUnits}/${summary.totalConductedUnits} Units Attended",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                val statusBadgeText = when {
+                                    summary.totalConductedUnits == 0 -> "No Records"
+                                    isAboveTarget -> {
+                                        if (summary.safeBunks > 0) "Safe: ${summary.safeBunks} ${if (summary.safeBunks == 1) "unit" else "units"}"
+                                        else "At Target"
+                                    }
+                                    else -> "Need ${summary.requiredUnitsToTarget} ${if (summary.requiredUnitsToTarget == 1) "unit" else "units"}"
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (isAboveTarget) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
+                                ) {
+                                    Text(
+                                        text = statusBadgeText,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isAboveTarget) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            }
+
+                            // Progress Bar
+                            LinearProgressIndicator(
+                                progress = { (summary.percentage / 100.0).toFloat().coerceIn(0f, 1f) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = if (isAboveTarget) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            )
+
+                            // Status message box
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = summary.statusMessage,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }

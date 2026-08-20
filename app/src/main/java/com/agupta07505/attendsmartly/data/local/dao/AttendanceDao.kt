@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -19,6 +19,9 @@ interface AttendanceDao {
 
     @Query("SELECT * FROM attendance_sessions WHERE sessionDate = :date AND subjectId = :subjectId LIMIT 1")
     suspend fun getSessionForSubjectAndDate(subjectId: Long, date: String): AttendanceSessionEntity?
+
+    @Query("SELECT * FROM attendance_sessions WHERE sessionDate = :date AND subjectId = :subjectId AND startTime = :startTime LIMIT 1")
+    suspend fun getSessionForSubjectDateAndTime(subjectId: Long, date: String, startTime: String): AttendanceSessionEntity?
 
     @Query("SELECT * FROM attendance_sessions WHERE sessionDate = :date AND timetableEntryId = :timetableEntryId LIMIT 1")
     suspend fun getSessionForTimetableAndDate(timetableEntryId: Long, date: String): AttendanceSessionEntity?
@@ -54,23 +57,26 @@ interface AttendanceDao {
     @Query("SELECT u.* FROM attendance_units u INNER JOIN attendance_sessions s ON u.sessionId = s.id WHERE s.subjectId = :subjectId")
     fun getAllUnitsForSubject(subjectId: Long): Flow<List<AttendanceUnitEntity>>
 
+    @Query("SELECT * FROM attendance_units ORDER BY markedAt DESC")
+    fun getAllUnits(): Flow<List<AttendanceUnitEntity>>
+
     @Query("SELECT * FROM attendance_units WHERE id = :unitId")
     suspend fun getUnitById(unitId: Long): AttendanceUnitEntity?
-
-    @Query("SELECT * FROM attendance_units")
-    fun getAllUnits(): Flow<List<AttendanceUnitEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUnit(unit: AttendanceUnitEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertUnits(units: List<AttendanceUnitEntity>)
+    suspend fun insertUnits(units: List<AttendanceUnitEntity>): List<Long>
 
     @Update
     suspend fun updateUnit(unit: AttendanceUnitEntity)
 
     @Update
     suspend fun updateUnits(units: List<AttendanceUnitEntity>)
+
+    @Delete
+    suspend fun deleteUnit(unit: AttendanceUnitEntity)
 
     @Query("DELETE FROM attendance_units WHERE sessionId = :sessionId")
     suspend fun deleteUnitsForSession(sessionId: Long)
@@ -80,17 +86,22 @@ interface AttendanceDao {
         session: AttendanceSessionEntity,
         units: List<AttendanceUnitEntity>
     ): Long {
-        val existingSession = getSessionById(session.id)
+        val existingSession = when {
+            session.id > 0 -> getSessionById(session.id)
+            session.timetableEntryId != null -> getSessionForTimetableAndDate(session.timetableEntryId, session.sessionDate)
+                ?: getSessionForSubjectDateAndTime(session.subjectId, session.sessionDate, session.startTime)
+            else -> getSessionForSubjectDateAndTime(session.subjectId, session.sessionDate, session.startTime)
+        }
         val sessionId = if (existingSession != null) {
-            updateSession(session)
-            session.id
+            updateSession(session.copy(id = existingSession.id))
+            existingSession.id
         } else {
-            insertSession(session)
+            insertSession(session.copy(id = 0))
         }
 
         // Replace units
         deleteUnitsForSession(sessionId)
-        val preparedUnits = units.map { it.copy(sessionId = sessionId) }
+        val preparedUnits = units.map { it.copy(id = 0, sessionId = sessionId) }
         insertUnits(preparedUnits)
         return sessionId
     }

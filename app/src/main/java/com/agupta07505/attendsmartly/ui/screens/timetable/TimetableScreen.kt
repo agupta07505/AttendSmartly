@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -389,7 +389,7 @@ fun TimetableScreen(
                                         Icon(Icons.Default.Edit, contentDescription = "Edit")
                                     }
                                     IconButton(
-                                        onClick = { viewModel.deleteTimetableEntry(item.entry.id) }
+                                        onClick = { viewModel.retireTimetableEntry(item.entry.id) }
                                     ) {
                                         Icon(
                                             Icons.Default.Delete,
@@ -420,9 +420,13 @@ fun TimetableScreen(
             initialEntry = editingEntry,
             subjects = activeSubjects,
             defaultDayOfWeek = selectedDayOfWeek,
-            onSave = { entry ->
+            onSave = { entry, preserveHistory, effectiveDate ->
                 if (editingEntry != null) {
-                    viewModel.updateTimetableEntry(entry)
+                    if (preserveHistory) {
+                        viewModel.updateTimetableEntryFromDate(editingEntry!!.id, entry, effectiveDate)
+                    } else {
+                        viewModel.updateTimetableEntry(entry)
+                    }
                 } else {
                     viewModel.addTimetableEntry(entry)
                 }
@@ -556,7 +560,9 @@ fun TimetableScreen(
             onSaveApiKey = { key -> viewModel.saveGeminiApiKey(key) },
             onPickImage = { uri -> viewModel.startOcrFromUri(context, uri) },
             onProcessSampleImage = { bitmap -> viewModel.startOcrFromBitmap(bitmap) },
-            onConfirmImport = { items, replace -> viewModel.confirmOcrImport(items, replace) },
+            onConfirmImport = { items, replace, effectiveDate ->
+                viewModel.confirmOcrImport(items, replace, effectiveDate)
+            },
             onDismiss = {
                 viewModel.resetOcrState()
                 showOcrDialog = false

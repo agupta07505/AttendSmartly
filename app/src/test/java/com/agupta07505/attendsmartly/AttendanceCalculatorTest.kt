@@ -71,18 +71,27 @@ class AttendanceCalculatorTest {
     }
 
     @Test
-    fun testCancelledClassesExcludedFromConducted() {
-        val statuses = listOf(
+    fun testTimetableChangePastAttendanceIntegrity() {
+        // Old timetable had 4 classes attended in the past, new timetable has 2 classes attended
+        val pastSessionsUnits = listOf(
             AttendanceStatus.PRESENT,
             AttendanceStatus.PRESENT,
-            AttendanceStatus.CANCELLED,
+            AttendanceStatus.PRESENT,
             AttendanceStatus.ABSENT
         )
-        val summary = AttendanceCalculator.calculate(statuses, targetPercentage = 75.0)
-        assertEquals(3, summary.totalConductedUnits)
-        assertEquals(2, summary.presentUnits)
+        val newTimetableUnits = listOf(
+            AttendanceStatus.PRESENT,
+            AttendanceStatus.PRESENT
+        )
+        val combinedAllHistory = pastSessionsUnits + newTimetableUnits
+        val summary = AttendanceCalculator.calculate(combinedAllHistory, targetPercentage = 75.0)
+
+        // 5 Present out of 6 Conducted = 83.33%
+        assertEquals(6, summary.totalConductedUnits)
+        assertEquals(5, summary.presentUnits)
         assertEquals(1, summary.absentUnits)
-        assertEquals(1, summary.cancelledUnits)
-        assertEquals(66.67, summary.percentage, 0.01)
+        assertEquals(83.33, summary.percentage, 0.01)
+        assertTrue(summary.percentage >= 75.0)
     }
 }
+

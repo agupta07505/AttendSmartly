@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -174,16 +174,50 @@ fun AttendanceHistoryScreen(
                                             .background(subColor)
                                     )
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = record.subject.name,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 15.sp
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(
+                                                text = record.subject.name,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 15.sp,
+                                                modifier = Modifier.weight(1f, fill = false)
+                                            )
+                                            if (record.session.isRescheduled) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = MaterialTheme.colorScheme.tertiaryContainer
+                                                ) {
+                                                    Text(
+                                                        text = "RESCHEDULED",
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 9.sp,
+                                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                                    )
+                                                }
+                                            }
+                                        }
                                         Text(
                                             text = "${DateUtils.formatDateToHuman(record.session.sessionDate)} • ${DateUtils.formatTime(record.session.startTime)} - ${DateUtils.formatTime(record.session.endTime)}",
                                             fontSize = 12.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
+                                        if (record.session.isRescheduled && record.session.originalDate != null) {
+                                            Text(
+                                                text = "Moved from ${DateUtils.formatDateToHuman(record.session.originalDate)} (${DateUtils.formatTime(record.session.originalTime ?: "")})${if (record.session.rescheduledReason.isNotBlank()) " • ${record.session.rescheduledReason}" else ""}",
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.tertiary
+                                            )
+                                        } else if (record.session.rescheduledToDate != null) {
+                                            Text(
+                                                text = "Moved to ${DateUtils.formatDateToHuman(record.session.rescheduledToDate)} (${DateUtils.formatTime(record.session.rescheduledToTime ?: "")})${if (record.session.rescheduledReason.isNotBlank()) " • ${record.session.rescheduledReason}" else ""}",
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                        }
                                     }
 
                                     IconButton(onClick = { activeEditingRecord = record }) {

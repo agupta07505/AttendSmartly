@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -28,5 +28,12 @@ data class ClassScheduleItem(
     val subject: SubjectEntity,
     val units: List<AttendanceUnitEntity>,
     val isHoliday: Boolean = false,
-    val holidayTitle: String? = null
+    val holidayTitle: String? = null,
+    val isRescheduledAway: Boolean = session?.rescheduledToDate != null,
+    val rescheduledToDate: String? = session?.rescheduledToDate,
+    val rescheduledToTime: String? = session?.rescheduledToTime,
+    val isRescheduledIncoming: Boolean = session?.isRescheduled == true || session?.originalDate != null,
+    val originalDate: String? = session?.originalDate,
+    val originalTime: String? = session?.originalTime,
+    val rescheduledReason: String? = session?.rescheduledReason
 )

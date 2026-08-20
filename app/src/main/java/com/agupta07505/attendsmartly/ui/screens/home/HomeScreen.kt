@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -30,9 +30,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.attendsmartly.domain.model.ClassScheduleItem
+import com.agupta07505.attendsmartly.ui.components.AddExtraClassDialog
 import com.agupta07505.attendsmartly.ui.components.AttendanceProgressCard
 import com.agupta07505.attendsmartly.ui.components.ClassCard
 import com.agupta07505.attendsmartly.ui.components.EditUnitBottomSheet
+import com.agupta07505.attendsmartly.ui.components.RescheduleClassDialog
 import com.agupta07505.attendsmartly.util.DateUtils
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -54,11 +56,15 @@ fun HomeScreen(
     val selectedDateIso by viewModel.selectedDateIso.collectAsState()
     val todaySchedules by viewModel.todaySchedules.collectAsState()
     val overallSummary by viewModel.overallSummary.collectAsState()
+    val allActiveSubjects by viewModel.allActiveSubjects.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     var activeSheetItem by remember { mutableStateOf<ClassScheduleItem?>(null) }
+    var reschedulingItem by remember { mutableStateOf<ClassScheduleItem?>(null) }
+    var showGeneralRescheduleDialog by remember { mutableStateOf(false) }
+    var showAddExtraClassDialog by remember { mutableStateOf(false) }
     var showFabMenu by remember { mutableStateOf(false) }
     var showDatePickerDialog by remember { mutableStateOf(false) }
 
@@ -118,6 +124,22 @@ fun HomeScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         horizontalAlignment = Alignment.End
                     ) {
+                        ExtendedFloatingActionButton(
+                            onClick = {
+                                showFabMenu = false
+                                showAddExtraClassDialog = true
+                            },
+                            icon = { Icon(Icons.Default.MoreTime, null) },
+                            text = { Text("Add Extra Class") }
+                        )
+                        ExtendedFloatingActionButton(
+                            onClick = {
+                                showFabMenu = false
+                                showGeneralRescheduleDialog = true
+                            },
+                            icon = { Icon(Icons.Default.EditCalendar, null) },
+                            text = { Text("Reschedule Class") }
+                        )
                         ExtendedFloatingActionButton(
                             onClick = {
                                 showFabMenu = false
@@ -226,9 +248,12 @@ fun HomeScreen(
                 contentPadding = PaddingValues(bottom = 80.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Overall Progress Summary Card
+                // Overall Progress Summary Card - Clean view without Safe Bunk and Goal Status
                 item {
-                    AttendanceProgressCard(summary = overallSummary)
+                    AttendanceProgressCard(
+                        summary = overallSummary,
+                        showSafeBunksAndGoal = false
+                    )
                 }
 
                 item {
@@ -290,7 +315,7 @@ fun HomeScreen(
                 } else {
                     items(
                         items = todaySchedules,
-                        key = { it.timetableEntry.id }
+                        key = { "${it.timetableEntry.id}_${it.session?.id ?: 0}" }
                     ) { item ->
                         ClassCard(
                             timetableEntry = item.timetableEntry,
@@ -314,6 +339,15 @@ fun HomeScreen(
                             },
                             onMoreOptions = {
                                 activeSheetItem = item
+                            },
+                            onReschedule = {
+                                reschedulingItem = item
+                            },
+                            onCancelReschedule = {
+                                viewModel.cancelReschedule(item)
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Reschedule reverted.")
+                                }
                             }
                         )
                     }
@@ -375,7 +409,83 @@ fun HomeScreen(
             onResetSession = {
                 viewModel.resetSession(item)
             },
+            onReschedule = {
+                val target = item
+                activeSheetItem = null
+                reschedulingItem = target
+            },
             onDismiss = { activeSheetItem = null }
+        )
+    }
+
+    // Reschedule Dialog for a specific item
+    reschedulingItem?.let { item ->
+        RescheduleClassDialog(
+            item = item,
+            currentDateIso = selectedDateIso,
+            onConfirm = { classItem, newDate, newStartTime, newEndTime, unitCount, reason ->
+                viewModel.rescheduleClass(
+                    item = classItem,
+                    newDate = newDate,
+                    newStartTime = newStartTime,
+                    newEndTime = newEndTime,
+                    unitCount = unitCount,
+                    reason = reason
+                )
+                reschedulingItem = null
+                scope.launch {
+                    snackbarHostState.showSnackbar("Class rescheduled to ${DateUtils.formatDateToHuman(newDate)}")
+                }
+            },
+            onDismiss = { reschedulingItem = null }
+        )
+    }
+
+    // General Reschedule Dialog from FAB Quick Menu (only today's scheduled classes)
+    if (showGeneralRescheduleDialog) {
+        val todayReschedulableClasses = todaySchedules.filter { it.session?.rescheduledToDate == null }
+        RescheduleClassDialog(
+            item = null,
+            availableClasses = todayReschedulableClasses,
+            currentDateIso = selectedDateIso,
+            onConfirm = { classItem, newDate, newStartTime, newEndTime, unitCount, reason ->
+                viewModel.rescheduleClass(
+                    item = classItem,
+                    newDate = newDate,
+                    newStartTime = newStartTime,
+                    newEndTime = newEndTime,
+                    unitCount = unitCount,
+                    reason = reason
+                )
+                showGeneralRescheduleDialog = false
+                scope.launch {
+                    snackbarHostState.showSnackbar("Class rescheduled to ${DateUtils.formatDateToHuman(newDate)}")
+                }
+            },
+            onDismiss = { showGeneralRescheduleDialog = false }
+        )
+    }
+
+    // Add Extra Class Dialog from FAB Quick Menu
+    if (showAddExtraClassDialog) {
+        AddExtraClassDialog(
+            availableSubjects = allActiveSubjects,
+            currentDateIso = selectedDateIso,
+            onConfirm = { subjectId, dateIso, startTime, endTime, unitCount, room, teacher, notes ->
+                viewModel.addExtraClass(
+                    subjectId = subjectId,
+                    dateIso = dateIso,
+                    startTime = startTime,
+                    endTime = endTime,
+                    unitCount = unitCount,
+                    notes = notes
+                )
+                showAddExtraClassDialog = false
+                scope.launch {
+                    snackbarHostState.showSnackbar("Extra class added for ${DateUtils.formatDateToHuman(dateIso)}")
+                }
+            },
+            onDismiss = { showAddExtraClassDialog = false }
         )
     }
 }

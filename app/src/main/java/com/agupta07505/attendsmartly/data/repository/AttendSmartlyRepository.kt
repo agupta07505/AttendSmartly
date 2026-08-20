@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import com.agupta07505.attendsmartly.util.DateUtils
-import java.time.DayOfWeek
 import java.time.LocalDate
 
 class AttendSmartlyRepository(
@@ -40,7 +39,9 @@ class AttendSmartlyRepository(
 
     // Timetable
     val allActiveTimetableEntries: Flow<List<TimetableEntryEntity>> = timetableDao.getAllActiveEntries()
+    val allTimetableEntries: Flow<List<TimetableEntryEntity>> = timetableDao.getAllEntries()
     fun getTimetableForDay(dayOfWeek: Int): Flow<List<TimetableEntryEntity>> = timetableDao.getEntriesForDay(dayOfWeek)
+    fun getTimetableForDayAndDate(dayOfWeek: Int, dateStr: String): Flow<List<TimetableEntryEntity>> = timetableDao.getEntriesForDayAndDate(dayOfWeek, dateStr)
     fun getTimetableForSubject(subjectId: Long): Flow<List<TimetableEntryEntity>> = timetableDao.getEntriesForSubject(subjectId)
     suspend fun getTimetableEntryById(id: Long): TimetableEntryEntity? = timetableDao.getEntryById(id)
     suspend fun insertTimetableEntry(entry: TimetableEntryEntity): Long = timetableDao.insertEntry(entry)
@@ -48,12 +49,62 @@ class AttendSmartlyRepository(
     suspend fun deleteTimetableEntry(id: Long) = timetableDao.deleteEntryById(id)
     suspend fun deleteAllTimetableEntries() = timetableDao.deleteAllEntries()
 
+    suspend fun updateTimetableEntryFromDate(
+        oldEntryId: Long,
+        updatedEntry: TimetableEntryEntity,
+        effectiveStartDate: String = DateUtils.todayIso()
+    ): Long {
+        val oldEntry = timetableDao.getEntryById(oldEntryId)
+        if (oldEntry != null) {
+            val yesterdayStr = try {
+                LocalDate.parse(effectiveStartDate, DateUtils.isoDateFormatter).minusDays(1).format(DateUtils.isoDateFormatter)
+            } catch (e: Exception) { "" }
+
+            if (yesterdayStr.isNotBlank() && (oldEntry.startDate.isBlank() || oldEntry.startDate <= yesterdayStr)) {
+                timetableDao.setEntryEndDate(oldEntryId, yesterdayStr)
+                return timetableDao.insertEntry(
+                    updatedEntry.copy(
+                        id = 0,
+                        startDate = effectiveStartDate,
+                        endDate = "",
+                        isActive = true,
+                        createdAt = System.currentTimeMillis(),
+                        updatedAt = System.currentTimeMillis()
+                    )
+                )
+            } else {
+                timetableDao.updateEntry(updatedEntry)
+                return oldEntryId
+            }
+        }
+        return timetableDao.insertEntry(updatedEntry)
+    }
+
+    suspend fun retireTimetableEntry(id: Long, effectiveDate: String = DateUtils.todayIso()) {
+        val yesterdayStr = try {
+            LocalDate.parse(effectiveDate, DateUtils.isoDateFormatter).minusDays(1).format(DateUtils.isoDateFormatter)
+        } catch (e: Exception) { "" }
+        if (yesterdayStr.isNotBlank()) {
+            timetableDao.setEntryEndDate(id, yesterdayStr)
+        } else {
+            timetableDao.deleteEntryById(id)
+        }
+    }
+
     suspend fun importParsedTimetable(
         items: List<com.agupta07505.attendsmartly.domain.model.ParsedTimetableItem>,
-        replaceExisting: Boolean = false
+        replaceExisting: Boolean = false,
+        effectiveStartDate: String = DateUtils.todayIso()
     ) {
         if (replaceExisting) {
-            timetableDao.deleteAllEntries()
+            val yesterdayStr = try {
+                LocalDate.parse(effectiveStartDate, DateUtils.isoDateFormatter).minusDays(1).format(DateUtils.isoDateFormatter)
+            } catch (e: Exception) { "" }
+            if (yesterdayStr.isNotBlank()) {
+                timetableDao.endActiveTimetableEntries(yesterdayStr)
+            } else {
+                timetableDao.deleteAllEntries()
+            }
         }
 
         val existingSubjects = subjectDao.getAllSubjects().first().toMutableList()
@@ -128,7 +179,8 @@ class AttendSmartlyRepository(
                 endTime = item.endTime,
                 roomOverride = item.roomLocation,
                 teacherOverride = item.teacherName.trim(),
-                attendanceUnitCount = item.attendanceUnitCount.coerceAtLeast(1)
+                attendanceUnitCount = item.attendanceUnitCount.coerceAtLeast(1),
+                startDate = effectiveStartDate
             )
             timetableDao.insertEntry(entry)
         }
@@ -156,6 +208,35 @@ class AttendSmartlyRepository(
         session: AttendanceSessionEntity,
         units: List<AttendanceUnitEntity>
     ): Long = attendanceDao.createOrUpdateSessionWithUnits(session, units)
+
+    suspend fun addExtraClassSession(
+        subjectId: Long,
+        dateIso: String,
+        startTime: String,
+        endTime: String,
+        unitCount: Int,
+        notes: String = ""
+    ): Long {
+        val session = AttendanceSessionEntity(
+            subjectId = subjectId,
+            timetableEntryId = null,
+            sessionDate = dateIso,
+            startTime = startTime,
+            endTime = endTime,
+            expectedUnitCount = unitCount,
+            notes = if (notes.isNotBlank()) notes else "Extra class",
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis()
+        )
+        val units = (0 until unitCount).map { index ->
+            AttendanceUnitEntity(
+                sessionId = 0,
+                unitIndex = index,
+                status = AttendanceStatus.UNMARKED.name
+            )
+        }
+        return attendanceDao.createOrUpdateSessionWithUnits(session, units)
+    }
 
     suspend fun updateUnitStatus(unitId: Long, newStatus: AttendanceStatus) {
         val target = attendanceDao.getUnitById(unitId) ?: return
@@ -233,6 +314,142 @@ class AttendSmartlyRepository(
         attendanceDao.deleteSessionById(sessionId)
     }
 
+    suspend fun rescheduleClassSession(
+        originalDate: String,
+        timetableEntryId: Long?,
+        subjectId: Long,
+        originalTime: String,
+        newDate: String,
+        newStartTime: String,
+        newEndTime: String,
+        unitCount: Int,
+        reason: String = ""
+    ): Pair<Long, Long> {
+        val existingOriginal = if (timetableEntryId != null) {
+            attendanceDao.getSessionForTimetableAndDate(timetableEntryId, originalDate)
+        } else {
+            attendanceDao.getSessionForSubjectAndDate(subjectId, originalDate)
+        }
+
+        val originalSession = existingOriginal?.copy(
+            rescheduledToDate = newDate,
+            rescheduledToTime = newStartTime,
+            rescheduledReason = reason,
+            notes = if (reason.isNotBlank()) "Rescheduled to $newDate $newStartTime: $reason" else "Rescheduled to $newDate $newStartTime",
+            updatedAt = System.currentTimeMillis()
+        ) ?: AttendanceSessionEntity(
+            subjectId = subjectId,
+            timetableEntryId = timetableEntryId,
+            sessionDate = originalDate,
+            startTime = originalTime,
+            endTime = originalTime,
+            expectedUnitCount = unitCount,
+            rescheduledToDate = newDate,
+            rescheduledToTime = newStartTime,
+            rescheduledReason = reason,
+            notes = if (reason.isNotBlank()) "Rescheduled to $newDate $newStartTime: $reason" else "Rescheduled to $newDate $newStartTime"
+        )
+
+        val origUnits = (0 until unitCount).map { idx ->
+            AttendanceUnitEntity(
+                sessionId = originalSession.id,
+                unitIndex = idx,
+                status = AttendanceStatus.CANCELLED.name
+            )
+        }
+        val origSessionId = attendanceDao.createOrUpdateSessionWithUnits(originalSession, origUnits)
+
+        val targetSession = AttendanceSessionEntity(
+            subjectId = subjectId,
+            timetableEntryId = null,
+            sessionDate = newDate,
+            startTime = newStartTime,
+            endTime = newEndTime,
+            expectedUnitCount = unitCount,
+            isRescheduled = true,
+            originalDate = originalDate,
+            originalTime = originalTime,
+            rescheduledReason = reason,
+            notes = if (reason.isNotBlank()) "Rescheduled from $originalDate $originalTime: $reason" else "Rescheduled from $originalDate $originalTime"
+        )
+
+        val targetUnits = (0 until unitCount).map { idx ->
+            AttendanceUnitEntity(
+                sessionId = 0,
+                unitIndex = idx,
+                status = AttendanceStatus.UNMARKED.name
+            )
+        }
+        val targetSessionId = attendanceDao.createOrUpdateSessionWithUnits(targetSession, targetUnits)
+
+        return Pair(origSessionId, targetSessionId)
+    }
+
+    suspend fun cancelReschedule(session: AttendanceSessionEntity) {
+        if (session.isRescheduled) {
+            // Case 1: Called on the newly rescheduled target session (e.g. on newDate)
+            val origDate = session.originalDate
+            if (origDate != null) {
+                val origSessions = attendanceDao.getSessionsForSubject(session.subjectId).first()
+                val originalSession = origSessions.find {
+                    it.sessionDate == origDate &&
+                    (it.rescheduledToDate == session.sessionDate || (session.timetableEntryId != null && it.timetableEntryId == session.timetableEntryId))
+                } ?: (if (session.timetableEntryId != null) {
+                    attendanceDao.getSessionForTimetableAndDate(session.timetableEntryId, origDate)
+                } else {
+                    attendanceDao.getSessionForSubjectAndDate(session.subjectId, origDate)
+                })
+
+                if (originalSession != null) {
+                    val updatedOriginal = originalSession.copy(
+                        rescheduledToDate = null,
+                        rescheduledToTime = null,
+                        rescheduledReason = "",
+                        notes = "",
+                        updatedAt = System.currentTimeMillis()
+                    )
+                    val units = (0 until originalSession.expectedUnitCount).map { idx ->
+                        AttendanceUnitEntity(
+                            sessionId = originalSession.id,
+                            unitIndex = idx,
+                            status = AttendanceStatus.UNMARKED.name
+                        )
+                    }
+                    attendanceDao.createOrUpdateSessionWithUnits(updatedOriginal, units)
+                }
+            }
+            attendanceDao.deleteSessionById(session.id)
+        } else if (session.rescheduledToDate != null) {
+            // Case 2: Called on the original session (e.g. on originalDate where card shows 'Rescheduled to newDate')
+            val targetDate = session.rescheduledToDate
+            if (targetDate != null) {
+                val subjectSessions = attendanceDao.getSessionsForSubject(session.subjectId).first()
+                val targetSession = subjectSessions.find {
+                    it.sessionDate == targetDate && it.isRescheduled && it.originalDate == session.sessionDate
+                }
+                if (targetSession != null) {
+                    attendanceDao.deleteSessionById(targetSession.id)
+                }
+            }
+
+            val updatedOriginal = session.copy(
+                rescheduledToDate = null,
+                rescheduledToTime = null,
+                rescheduledReason = "",
+                notes = "",
+                updatedAt = System.currentTimeMillis()
+            )
+            val units = (0 until session.expectedUnitCount).map { idx ->
+                AttendanceUnitEntity(
+                    sessionId = session.id,
+                    unitIndex = idx,
+                    status = AttendanceStatus.UNMARKED.name
+                )
+            }
+            attendanceDao.createOrUpdateSessionWithUnits(updatedOriginal, units)
+        }
+    }
+
     // Holidays
     val allHolidays: Flow<List<HolidayEntity>> = holidayDao.getAllHolidays()
     suspend fun getHolidayByDate(dateStr: String): HolidayEntity? = holidayDao.getHolidayByDate(dateStr)
@@ -240,12 +457,13 @@ class AttendSmartlyRepository(
     suspend fun deleteHoliday(id: Long) = holidayDao.deleteHolidayById(id)
 
     suspend fun clearAllData() {
-        val subs = allSubjects.first()
+        val subs = subjectDao.getAllSubjects().first()
         for (s in subs) subjectDao.deleteSubject(s)
-        val tts = allActiveTimetableEntries.first()
-        for (t in tts) timetableDao.deleteEntryById(t.id)
-        val sesss = allSessions.first()
+        timetableDao.deleteAllEntries()
+        val sesss = attendanceDao.getAllSessions().first()
         for (se in sesss) attendanceDao.deleteSessionById(se.id)
+        val holidays = holidayDao.getAllHolidays().first()
+        for (h in holidays) holidayDao.deleteHolidayById(h.id)
     }
 
     suspend fun markPastAttendanceForSubject(

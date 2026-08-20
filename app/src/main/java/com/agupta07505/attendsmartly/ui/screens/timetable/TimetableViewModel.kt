@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -8,12 +8,17 @@
 package com.agupta07505.attendsmartly.ui.screens.timetable
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agupta07505.attendsmartly.data.local.entity.SubjectEntity
 import com.agupta07505.attendsmartly.data.local.entity.TimetableEntryEntity
+import com.agupta07505.attendsmartly.data.preferences.UserPreferencesRepository
+import com.agupta07505.attendsmartly.data.remote.gemini.TimetableOcrService
 import com.agupta07505.attendsmartly.data.repository.AttendSmartlyRepository
+import com.agupta07505.attendsmartly.domain.model.ParsedTimetableItem
 import com.agupta07505.attendsmartly.domain.model.TimetableWithSubject
 import com.agupta07505.attendsmartly.util.DateUtils
 import com.agupta07505.attendsmartly.util.ExportImportUtils
@@ -21,12 +26,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import com.agupta07505.attendsmartly.data.preferences.UserPreferencesRepository
-import com.agupta07505.attendsmartly.data.remote.gemini.TimetableOcrService
-import com.agupta07505.attendsmartly.domain.model.ParsedTimetableItem
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TimetableViewModel(
@@ -95,6 +94,22 @@ class TimetableViewModel(
         }
     }
 
+    fun updateTimetableEntryFromDate(
+        oldEntryId: Long,
+        updatedEntry: TimetableEntryEntity,
+        effectiveStartDate: String = DateUtils.todayIso()
+    ) {
+        viewModelScope.launch {
+            repository.updateTimetableEntryFromDate(oldEntryId, updatedEntry, effectiveStartDate)
+        }
+    }
+
+    fun retireTimetableEntry(id: Long, effectiveDate: String = DateUtils.todayIso()) {
+        viewModelScope.launch {
+            repository.retireTimetableEntry(id, effectiveDate)
+        }
+    }
+
     fun deleteTimetableEntry(id: Long) {
         viewModelScope.launch {
             repository.deleteTimetableEntry(id)
@@ -124,9 +139,19 @@ class TimetableViewModel(
         }
     }
 
-    fun importTimetable(jsonString: String, onResult: (Boolean, String) -> Unit) {
+    fun importTimetable(
+        jsonString: String,
+        effectiveStartDate: String = DateUtils.todayIso(),
+        replaceExisting: Boolean = false,
+        onResult: (Boolean, String) -> Unit
+    ) {
         viewModelScope.launch {
-            val (success, message) = ExportImportUtils.importTimetableFromJson(jsonString, repository)
+            val (success, message) = ExportImportUtils.importTimetableFromJson(
+                jsonString = jsonString,
+                repository = repository,
+                effectiveStartDate = effectiveStartDate,
+                replaceExisting = replaceExisting
+            )
             onResult(success, message)
         }
     }
@@ -172,11 +197,15 @@ class TimetableViewModel(
         }
     }
 
-    fun confirmOcrImport(items: List<ParsedTimetableItem>, replaceExisting: Boolean) {
+    fun confirmOcrImport(
+        items: List<ParsedTimetableItem>,
+        replaceExisting: Boolean,
+        effectiveStartDate: String = DateUtils.todayIso()
+    ) {
         viewModelScope.launch {
             try {
-                repository.importParsedTimetable(items, replaceExisting)
-                _ocrState.value = AiTimetableOcrState.Success("Successfully imported ${items.size} class schedule entries into your timetable!")
+                repository.importParsedTimetable(items, replaceExisting, effectiveStartDate)
+                _ocrState.value = AiTimetableOcrState.Success("Successfully imported ${items.size} class schedule entries into your timetable starting from ${DateUtils.formatDateToHuman(effectiveStartDate)}!")
             } catch (e: Exception) {
                 _ocrState.value = AiTimetableOcrState.Error("Failed to save schedule: ${e.localizedMessage}")
             }
@@ -187,11 +216,22 @@ class TimetableViewModel(
         _ocrState.value = AiTimetableOcrState.Idle
     }
 
-    fun importTimetableFromUri(context: Context, uri: Uri, onResult: (Boolean, String) -> Unit) {
+    fun importTimetableFromUri(
+        context: Context,
+        uri: Uri,
+        effectiveStartDate: String = DateUtils.todayIso(),
+        replaceExisting: Boolean = false,
+        onResult: (Boolean, String) -> Unit
+    ) {
         viewModelScope.launch {
             val json = ExportImportUtils.readTextFromUri(context, uri)
             if (json != null) {
-                val (success, message) = ExportImportUtils.importTimetableFromJson(json, repository)
+                val (success, message) = ExportImportUtils.importTimetableFromJson(
+                    jsonString = json,
+                    repository = repository,
+                    effectiveStartDate = effectiveStartDate,
+                    replaceExisting = replaceExisting
+                )
                 onResult(success, message)
             } else {
                 onResult(false, "Failed to read JSON file.")
