@@ -393,4 +393,36 @@ class ExportImportUtilsTest {
         assertEquals(1, units.size)
         assertEquals("PRESENT", units[0].status)
     }
+
+    @Test
+    fun testTimetableEntryRescheduleAndEffectiveDateSanitization() {
+        val originalEntry = TimetableEntryEntity(
+            id = 10,
+            subjectId = 1,
+            dayOfWeek = 1, // Monday
+            startTime = "10:00",
+            endTime = "11:00",
+            startDate = "2026-08-01",
+            endDate = ""
+        )
+
+        // Rescheduled / Moved to Friday starting from 2026-08-22
+        val movedEntry = originalEntry.copy(
+            id = 0,
+            dayOfWeek = 5, // Friday
+            startDate = "2026-08-22",
+            endDate = ""
+        )
+
+        val sanitizedOriginal = ExportImportUtils.sanitizeTimetableEntry(originalEntry.copy(endDate = "2026-08-21"))
+        val sanitizedMoved = ExportImportUtils.sanitizeTimetableEntry(movedEntry)
+
+        assertEquals("2026-08-21", sanitizedOriginal.endDate)
+        assertEquals(1, sanitizedOriginal.dayOfWeek)
+
+        assertEquals("2026-08-22", sanitizedMoved.startDate)
+        assertEquals("", sanitizedMoved.endDate)
+        assertEquals(5, sanitizedMoved.dayOfWeek)
+        assertTrue(sanitizedMoved.isActive)
+    }
 }

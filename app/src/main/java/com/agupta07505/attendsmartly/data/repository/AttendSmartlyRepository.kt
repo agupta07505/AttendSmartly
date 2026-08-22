@@ -105,8 +105,19 @@ class AttendSmartlyRepository(
                 LocalDate.parse(effectiveStartDate, DateUtils.isoDateFormatter).minusDays(1).format(DateUtils.isoDateFormatter)
             } catch (e: Exception) { "" }
 
-            if (yesterdayStr.isNotBlank() && (oldEntry.startDate.isBlank() || oldEntry.startDate <= yesterdayStr)) {
-                timetableDao.setEntryEndDate(oldEntryId, yesterdayStr)
+            val pastSessions = attendanceDao.getSessionsForTimetableEntry(oldEntryId)
+            val hasPastMarkedSessions = pastSessions.any { session ->
+                session.sessionDate < effectiveStartDate &&
+                attendanceDao.getUnitsForSession(session.id).any { it.status != com.agupta07505.attendsmartly.domain.model.AttendanceStatus.UNMARKED.name }
+            }
+
+            if (yesterdayStr.isNotBlank() && (oldEntry.startDate.isBlank() || oldEntry.startDate <= yesterdayStr || hasPastMarkedSessions)) {
+                if (oldEntry.startDate.isNotBlank() && oldEntry.startDate > yesterdayStr && hasPastMarkedSessions) {
+                    val earliestSessionDate = pastSessions.map { it.sessionDate }.minOrNull() ?: ""
+                    timetableDao.updateEntry(oldEntry.copy(startDate = earliestSessionDate, endDate = yesterdayStr, updatedAt = System.currentTimeMillis()))
+                } else {
+                    timetableDao.setEntryEndDate(oldEntryId, yesterdayStr)
+                }
 
                 // Clean up any future or today UNMARKED sessions for the old entry
                 val futureSessions = attendanceDao.getSessionsForTimetableEntryFromDate(oldEntryId, effectiveStartDate)
@@ -129,11 +140,11 @@ class AttendSmartlyRepository(
                     )
                 )
             } else {
-                updateTimetableEntry(updatedEntry)
+                updateTimetableEntry(updatedEntry.copy(startDate = effectiveStartDate))
                 return oldEntryId
             }
         }
-        return timetableDao.insertEntry(updatedEntry)
+        return timetableDao.insertEntry(updatedEntry.copy(startDate = effectiveStartDate))
     }
 
     suspend fun retireTimetableEntry(id: Long, effectiveDate: String = DateUtils.todayIso()) {
