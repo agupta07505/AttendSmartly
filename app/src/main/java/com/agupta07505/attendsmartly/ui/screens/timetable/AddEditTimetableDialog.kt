@@ -56,13 +56,8 @@ fun AddEditTimetableDialog(
     var roomOverride by remember { mutableStateOf(initialEntry?.roomOverride ?: "") }
     var teacherOverride by remember { mutableStateOf(initialEntry?.teacherOverride ?: "") }
 
-    var effectiveStartDate by remember {
-        mutableStateOf(
-            if (initialEntry?.startDate?.isNotBlank() == true) initialEntry.startDate
-            else DateUtils.todayIso()
-        )
-    }
-    var preservePastHistory by remember { mutableStateOf(false) }
+    var effectiveStartDate by remember { mutableStateOf(DateUtils.todayIso()) }
+    var preservePastHistory by remember { mutableStateOf(true) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     var unitCount by remember(startTime, endTime, selectedSubject) {

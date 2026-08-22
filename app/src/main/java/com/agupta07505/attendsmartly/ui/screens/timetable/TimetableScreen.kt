@@ -430,6 +430,7 @@ fun TimetableScreen(
                 } else {
                     viewModel.addTimetableEntry(entry)
                 }
+                viewModel.selectDayOfWeek(entry.dayOfWeek)
                 showAddDialog = false
                 editingEntry = null
             },
