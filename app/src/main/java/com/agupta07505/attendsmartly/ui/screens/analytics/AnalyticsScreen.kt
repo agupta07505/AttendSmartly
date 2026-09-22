@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -195,7 +196,7 @@ fun AnalyticsScreen(
                     }
                 }
             } else {
-                items(state.subjectSummaries, key = { it.subject.id }) { item ->
+                itemsIndexed(state.subjectSummaries, key = { index, item -> "${item.subject.id}_$index" }) { _, item ->
                     val sub = item.subject
                     val summary = item.summary
                     val subColor = Color(sub.colorValue.toInt())

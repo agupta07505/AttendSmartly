@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -28,17 +28,30 @@ class AttendSmartlyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         
-        database = AppDatabase.getInstance(this)
-        userPreferencesRepository = UserPreferencesRepository(this)
-        
-        repository = AttendSmartlyRepository(
-            subjectDao = database.subjectDao(),
-            timetableDao = database.timetableDao(),
-            attendanceDao = database.attendanceDao(),
-            holidayDao = database.holidayDao()
-        )
+        try {
+            database = AppDatabase.getInstance(this)
+            userPreferencesRepository = UserPreferencesRepository(this)
+            
+            repository = AttendSmartlyRepository(
+                subjectDao = database.subjectDao(),
+                timetableDao = database.timetableDao(),
+                attendanceDao = database.attendanceDao(),
+                holidayDao = database.holidayDao()
+            )
+        } catch (e: Throwable) {
+            e.printStackTrace()
+        }
 
-        NotificationHelper.createNotificationChannel(this)
-        ReminderWorker.schedulePeriodicReminderCheck(this)
+        try {
+            NotificationHelper.createNotificationChannel(this)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+        }
+
+        try {
+            ReminderWorker.schedulePeriodicReminderCheck(this)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+        }
     }
 }

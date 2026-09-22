@@ -84,7 +84,7 @@ class HomeViewModel(
                 val matchedSessionIds = scheduledItems.mapNotNull { it.session?.id }.toSet()
                 val standaloneSessions = sessions.filter { session ->
                     !matchedSessionIds.contains(session.id) &&
-                    (session.isRescheduled || allUnits.any { it.sessionId == session.id && it.status != AttendanceStatus.UNMARKED.name })
+                    (session.timetableEntryId == null || session.isRescheduled || allUnits.any { it.sessionId == session.id && it.status != AttendanceStatus.UNMARKED.name })
                 }.mapNotNull { session ->
                     val subject = subjects.find { it.id == session.subjectId } ?: return@mapNotNull null
                     val units = allUnits.filter { it.sessionId == session.id }

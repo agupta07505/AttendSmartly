@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -99,6 +100,22 @@ fun HomeScreen(
                 } else if (current.isAfter(end)) {
                     val target = if (!today.isBefore(start) && !today.isAfter(end)) today else end
                     viewModel.selectDate(target.format(DateUtils.isoDateFormatter))
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // Auto-attendance presence check when viewing Home screen during class time
+    LaunchedEffect(selectedDateIso, userPreferences.autoAttendanceEnabled) {
+        if (userPreferences.autoAttendanceEnabled && selectedDateIso == DateUtils.todayIso()) {
+            try {
+                when (val result = com.agupta07505.attendsmartly.location.LocationAttendanceManager.checkOngoingClassPresence(context)) {
+                    is com.agupta07505.attendsmartly.location.LocationCheckResult.AutoMarked -> {
+                        snackbarHostState.showSnackbar("✅ Auto-marked Present for ${result.subjectName} (in classroom for 5 mins)")
+                    }
+                    else -> {}
                 }
             } catch (_: Exception) {}
         }
@@ -231,8 +248,10 @@ fun HomeScreen(
 
             LaunchedEffect(selectedDateIso, dates) {
                 val index = dates.indexOfFirst { it.format(DateUtils.isoDateFormatter) == selectedDateIso }
-                if (index >= 0) {
-                    dateRowState.animateScrollToItem((index - 2).coerceAtLeast(0))
+                if (index >= 0 && index < dates.size) {
+                    try {
+                        dateRowState.animateScrollToItem((index - 2).coerceAtLeast(0))
+                    } catch (_: Exception) {}
                 }
             }
 
@@ -394,10 +413,10 @@ fun HomeScreen(
                         }
                     }
                 } else {
-                    items(
+                    itemsIndexed(
                         items = todaySchedules,
-                        key = { "${it.timetableEntry.id}_${it.session?.id ?: 0}" }
-                    ) { item ->
+                        key = { index, item -> "${item.timetableEntry.id}_${item.session?.id ?: "none"}_${item.timetableEntry.startTime}_$index" }
+                    ) { _, item ->
                         ClassCard(
                             timetableEntry = item.timetableEntry,
                             subject = item.subject,

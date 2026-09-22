@@ -58,6 +58,9 @@ object ExportImportUtils {
         val target = if (sub.targetPercentage > 0.0) sub.targetPercentage else 75.0
         val reminder = if (sub.defaultReminderMinutes >= 0) sub.defaultReminderMinutes else 10
         val notes = sub.notes?.trim() ?: ""
+        val lat = if (sub.latitude != null && sub.latitude in -90.0..90.0) sub.latitude else null
+        val lng = if (sub.longitude != null && sub.longitude in -180.0..180.0) sub.longitude else null
+        val radius = if (sub.locationRadiusMeters > 0) sub.locationRadiusMeters else 50
 
         return sub.copy(
             id = sub.id,
@@ -75,6 +78,9 @@ object ExportImportUtils {
             defaultReminderMinutes = reminder,
             notes = notes,
             isArchived = sub.isArchived,
+            latitude = lat,
+            longitude = lng,
+            locationRadiusMeters = radius,
             createdAt = if (sub.createdAt > 0) sub.createdAt else System.currentTimeMillis(),
             updatedAt = if (sub.updatedAt > 0) sub.updatedAt else System.currentTimeMillis()
         )
@@ -93,6 +99,9 @@ object ExportImportUtils {
         val reminder = if (entry.reminderMinutes >= 0) entry.reminderMinutes else 10
         val day = if (entry.dayOfWeek in 1..7) entry.dayOfWeek else 1
         val isActive = entry.isActive || (endDate.isBlank() || endDate >= DateUtils.todayIso())
+        val lat = if (entry.latitude != null && entry.latitude in -90.0..90.0) entry.latitude else null
+        val lng = if (entry.longitude != null && entry.longitude in -180.0..180.0) entry.longitude else null
+        val radius = if (entry.locationRadiusMeters > 0) entry.locationRadiusMeters else 50
 
         return entry.copy(
             id = entry.id,
@@ -109,6 +118,9 @@ object ExportImportUtils {
             repeatType = repeatType,
             notes = notes,
             isActive = isActive,
+            latitude = lat,
+            longitude = lng,
+            locationRadiusMeters = radius,
             createdAt = if (entry.createdAt > 0) entry.createdAt else System.currentTimeMillis(),
             updatedAt = if (entry.updatedAt > 0) entry.updatedAt else System.currentTimeMillis()
         )
@@ -141,6 +153,7 @@ object ExportImportUtils {
             rescheduledToDate = rescheduledToDate,
             rescheduledToTime = rescheduledToTime,
             rescheduledReason = rescheduledReason,
+            autoMarked = session.autoMarked,
             createdAt = if (session.createdAt > 0) session.createdAt else System.currentTimeMillis(),
             updatedAt = if (session.updatedAt > 0) session.updatedAt else System.currentTimeMillis()
         )
@@ -515,15 +528,22 @@ object ExportImportUtils {
                         subjectIdMap[rawSub.id] = existing.id
                     }
                     // Update any empty fields on existing subject if backup has values
-                    if ((existing.teacherName.isBlank() && sub.teacherName.isNotBlank()) ||
+                    val shouldUpdate = replaceExisting ||
+                        (existing.teacherName.isBlank() && sub.teacherName.isNotBlank()) ||
                         (existing.room.isBlank() && sub.room.isNotBlank()) ||
-                        (existing.code.isBlank() && sub.code.isNotBlank())
-                    ) {
+                        (existing.code.isBlank() && sub.code.isNotBlank()) ||
+                        (existing.latitude == null && sub.latitude != null) ||
+                        (existing.longitude == null && sub.longitude != null)
+
+                    if (shouldUpdate) {
                         repository.updateSubject(
                             existing.copy(
-                                teacherName = existing.teacherName.ifBlank { sub.teacherName },
-                                room = existing.room.ifBlank { sub.room },
-                                code = existing.code.ifBlank { sub.code }
+                                teacherName = if (replaceExisting && sub.teacherName.isNotBlank()) sub.teacherName else existing.teacherName.ifBlank { sub.teacherName },
+                                room = if (replaceExisting && sub.room.isNotBlank()) sub.room else existing.room.ifBlank { sub.room },
+                                code = if (replaceExisting && sub.code.isNotBlank()) sub.code else existing.code.ifBlank { sub.code },
+                                latitude = if (replaceExisting && sub.latitude != null) sub.latitude else (existing.latitude ?: sub.latitude),
+                                longitude = if (replaceExisting && sub.longitude != null) sub.longitude else (existing.longitude ?: sub.longitude),
+                                locationRadiusMeters = if (replaceExisting && sub.latitude != null) sub.locationRadiusMeters else if (existing.latitude == null && sub.latitude != null) sub.locationRadiusMeters else existing.locationRadiusMeters
                             )
                         )
                     }

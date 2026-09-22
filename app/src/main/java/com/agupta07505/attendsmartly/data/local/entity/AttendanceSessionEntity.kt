@@ -43,6 +43,7 @@ data class AttendanceSessionEntity(
     val rescheduledToDate: String? = null, // e.g. "2026-08-20" if this session was rescheduled to another date
     val rescheduledToTime: String? = null, // e.g. "14:00"
     val rescheduledReason: String = "",
+    val autoMarked: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

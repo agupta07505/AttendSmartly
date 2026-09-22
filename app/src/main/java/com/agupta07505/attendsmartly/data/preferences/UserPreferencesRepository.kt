@@ -9,6 +9,7 @@ package com.agupta07505.attendsmartly.data.preferences
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import java.io.IOException
@@ -16,7 +17,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "AttendSmartly_prefs")
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "AttendSmartly_prefs",
+    corruptionHandler = ReplaceFileCorruptionHandler(
+        produceNewData = { emptyPreferences() }
+    )
+)
 
 data class UserPreferences(
     val notificationsEnabled: Boolean = true,
@@ -35,7 +41,10 @@ data class UserPreferences(
     val confirmMarkingAbsent: Boolean = false,
     val notificationSound: Boolean = true,
     val notificationVibrate: Boolean = true,
-    val geminiApiKey: String = ""
+    val geminiApiKey: String = "",
+    val autoAttendanceEnabled: Boolean = true,
+    val autoAttendanceDwellMinutes: Int = 5,
+    val autoAttendanceRadiusMeters: Int = 50
 )
 
 class UserPreferencesRepository(private val context: Context) {
@@ -58,15 +67,14 @@ class UserPreferencesRepository(private val context: Context) {
         val NOTIFICATION_SOUND = booleanPreferencesKey("notification_sound")
         val NOTIFICATION_VIBRATE = booleanPreferencesKey("notification_vibrate")
         val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
+        val AUTO_ATTENDANCE_ENABLED = booleanPreferencesKey("auto_attendance_enabled")
+        val AUTO_ATTENDANCE_DWELL_MINUTES = intPreferencesKey("auto_attendance_dwell_minutes")
+        val AUTO_ATTENDANCE_RADIUS_METERS = intPreferencesKey("auto_attendance_radius_meters")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
+        .catch { _ ->
+            emit(emptyPreferences())
         }
         .map { preferences ->
             UserPreferences(
@@ -86,7 +94,10 @@ class UserPreferencesRepository(private val context: Context) {
                 confirmMarkingAbsent = preferences[PreferencesKeys.CONFIRM_MARKING_ABSENT] ?: false,
                 notificationSound = preferences[PreferencesKeys.NOTIFICATION_SOUND] ?: true,
                 notificationVibrate = preferences[PreferencesKeys.NOTIFICATION_VIBRATE] ?: true,
-                geminiApiKey = preferences[PreferencesKeys.GEMINI_API_KEY] ?: ""
+                geminiApiKey = preferences[PreferencesKeys.GEMINI_API_KEY] ?: "",
+                autoAttendanceEnabled = preferences[PreferencesKeys.AUTO_ATTENDANCE_ENABLED] ?: true,
+                autoAttendanceDwellMinutes = preferences[PreferencesKeys.AUTO_ATTENDANCE_DWELL_MINUTES] ?: 5,
+                autoAttendanceRadiusMeters = preferences[PreferencesKeys.AUTO_ATTENDANCE_RADIUS_METERS] ?: 50
             )
         }
 
@@ -178,6 +189,24 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun updateGeminiApiKey(apiKey: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.GEMINI_API_KEY] = apiKey.trim()
+        }
+    }
+
+    suspend fun updateAutoAttendanceEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.AUTO_ATTENDANCE_ENABLED] = enabled
+        }
+    }
+
+    suspend fun updateAutoAttendanceDwellMinutes(minutes: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.AUTO_ATTENDANCE_DWELL_MINUTES] = minutes
+        }
+    }
+
+    suspend fun updateAutoAttendanceRadiusMeters(radius: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.AUTO_ATTENDANCE_RADIUS_METERS] = radius
         }
     }
 

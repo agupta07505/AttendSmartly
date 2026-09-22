@@ -425,4 +425,166 @@ class ExportImportUtilsTest {
         assertEquals(5, sanitizedMoved.dayOfWeek)
         assertTrue(sanitizedMoved.isActive)
     }
+
+    @Test
+    fun testSanitizeLocationOnSubjectAndTimetableEntry() {
+        val validSubject = SubjectEntity(
+            id = 1,
+            name = "Robotics",
+            latitude = 28.6139,
+            longitude = 77.2090,
+            locationRadiusMeters = 100
+        )
+        val sanitizedSub = ExportImportUtils.sanitizeSubject(validSubject)
+        assertEquals(28.6139, sanitizedSub.latitude!!, 0.0001)
+        assertEquals(77.2090, sanitizedSub.longitude!!, 0.0001)
+        assertEquals(100, sanitizedSub.locationRadiusMeters)
+
+        // Invalid coordinates and negative radius
+        val invalidSubject = SubjectEntity(
+            id = 2,
+            name = "Physics",
+            latitude = 195.0, // Out of bounds
+            longitude = -250.0, // Out of bounds
+            locationRadiusMeters = -10
+        )
+        val sanitizedInvalid = ExportImportUtils.sanitizeSubject(invalidSubject)
+        org.junit.Assert.assertNull(sanitizedInvalid.latitude)
+        org.junit.Assert.assertNull(sanitizedInvalid.longitude)
+        assertEquals(50, sanitizedInvalid.locationRadiusMeters)
+
+        val entry = TimetableEntryEntity(
+            id = 10,
+            subjectId = 1,
+            dayOfWeek = 1,
+            startTime = "09:00",
+            endTime = "10:00",
+            latitude = 12.9716,
+            longitude = 77.5946,
+            locationRadiusMeters = 75
+        )
+        val sanitizedEntry = ExportImportUtils.sanitizeTimetableEntry(entry)
+        assertEquals(12.9716, sanitizedEntry.latitude!!, 0.0001)
+        assertEquals(77.5946, sanitizedEntry.longitude!!, 0.0001)
+        assertEquals(75, sanitizedEntry.locationRadiusMeters)
+    }
+
+    @Test
+    fun testSanitizeSessionAutoMarked() {
+        val session = AttendanceSessionEntity(
+            id = 1,
+            subjectId = 1,
+            sessionDate = "2026-09-22",
+            startTime = "09:00",
+            endTime = "10:00",
+            autoMarked = true
+        )
+        val sanitized = ExportImportUtils.sanitizeSession(session)
+        assertTrue(sanitized.autoMarked)
+    }
+
+    @Test
+    fun testLocationBackupRoundTripSerialization() {
+        val subject = SubjectEntity(
+            id = 10,
+            name = "Computer Architecture",
+            latitude = 28.5450,
+            longitude = 77.1926,
+            locationRadiusMeters = 60
+        )
+        val entry = TimetableEntryEntity(
+            id = 20,
+            subjectId = 10,
+            dayOfWeek = 3,
+            startTime = "11:00",
+            endTime = "12:00",
+            latitude = 28.5452,
+            longitude = 77.1928,
+            locationRadiusMeters = 40
+        )
+        val session = AttendanceSessionEntity(
+            id = 30,
+            subjectId = 10,
+            timetableEntryId = 20,
+            sessionDate = "2026-09-22",
+            startTime = "11:00",
+            endTime = "12:00",
+            autoMarked = true
+        )
+
+        val backup = com.agupta07505.attendsmartly.util.AttendSmartlyBackup(
+            version = 1,
+            exportedAt = System.currentTimeMillis(),
+            subjects = listOf(subject),
+            timetableEntries = listOf(entry),
+            sessions = listOf(session)
+        )
+
+        val gson = Gson()
+        val json = gson.toJson(backup)
+        val deserialized = gson.fromJson(json, com.agupta07505.attendsmartly.util.AttendSmartlyBackup::class.java)
+
+        assertEquals(1, deserialized.subjects.size)
+        assertEquals(28.5450, deserialized.subjects[0].latitude!!, 0.0001)
+        assertEquals(77.1926, deserialized.subjects[0].longitude!!, 0.0001)
+        assertEquals(60, deserialized.subjects[0].locationRadiusMeters)
+
+        assertEquals(1, deserialized.timetableEntries.size)
+        assertEquals(28.5452, deserialized.timetableEntries[0].latitude!!, 0.0001)
+        assertEquals(77.1928, deserialized.timetableEntries[0].longitude!!, 0.0001)
+        assertEquals(40, deserialized.timetableEntries[0].locationRadiusMeters)
+
+        assertEquals(1, deserialized.sessions.size)
+        assertTrue(deserialized.sessions[0].autoMarked)
+    }
+
+    @Test
+    fun testOlderBackupWithoutLocationDeserializesGracefullyWithDefaults() {
+        val legacyJson = """
+            {
+                "version": 1,
+                "exportedAt": 1724140000000,
+                "subjects": [
+                    {
+                        "id": 1,
+                        "name": "Linear Algebra"
+                    }
+                ],
+                "timetableEntries": [
+                    {
+                        "id": 101,
+                        "subjectId": 1,
+                        "dayOfWeek": 2,
+                        "startTime": "09:00",
+                        "endTime": "10:00"
+                    }
+                ],
+                "sessions": [
+                    {
+                        "id": 201,
+                        "subjectId": 1,
+                        "sessionDate": "2026-08-20",
+                        "startTime": "09:00",
+                        "endTime": "10:00"
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val gson = Gson()
+        val deserialized = gson.fromJson(legacyJson, com.agupta07505.attendsmartly.util.AttendSmartlyBackup::class.java)
+        val sanitizedSub = ExportImportUtils.sanitizeSubject(deserialized.subjects[0])
+        val sanitizedEntry = ExportImportUtils.sanitizeTimetableEntry(deserialized.timetableEntries[0])
+        val sanitizedSession = ExportImportUtils.sanitizeSession(deserialized.sessions[0])
+
+        org.junit.Assert.assertNull(sanitizedSub.latitude)
+        org.junit.Assert.assertNull(sanitizedSub.longitude)
+        assertEquals(50, sanitizedSub.locationRadiusMeters)
+
+        org.junit.Assert.assertNull(sanitizedEntry.latitude)
+        org.junit.Assert.assertNull(sanitizedEntry.longitude)
+        assertEquals(50, sanitizedEntry.locationRadiusMeters)
+
+        org.junit.Assert.assertFalse(sanitizedSession.autoMarked)
+    }
 }

@@ -44,10 +44,17 @@ College academic rules often demand a mandatory minimum attendance threshold (e.
 
 ## ✨ Key Features
 
-### 📅 Smart Weekly Timetable & Class Rescheduling
+### 📍 Classroom GPS Location & 5-Minute Dwell Auto-Attendance
+- **Classroom Geotagging**: Tag classroom locations directly to subjects or specific timetable slots with one-tap current GPS detection and configurable radius (`25m`, `50m`, `100m`, `150m`).
+- **5-Minute Dwell Verification**: Automatically marks attendance as **Present** when the student is verified inside the classroom location range for at least 5 minutes during scheduled class hours.
+- **Smart Geofencing & Fallback**: Powered by Google Play Services Geofencing with battery-efficient `GEOFENCE_TRANSITION_DWELL` and seamless fallback to native Android `LocationManager` on de-Googled devices.
+- **Visual Badges & Notifications**: Shows `AUTO-MARKED` and `📍 [radius]m` badges on class cards, plus dedicated notification channel alerts upon marking.
+
+### 📅 Smart Weekly Timetable, Extra Classes & Semester Tracking
 - Configure recurring daily classes, room numbers, instructor names, and specific class types (Lecture, Practical Lab, Tutorial).
 - **Extra Class Scheduler**: Add one-off or compensatory extra classes to any date with custom unit counts without altering your recurring weekly timetable.
 - **Class Rescheduling**: Move any scheduled class to a new date and time with reason notes, metadata indicators, and instant one-tap revert capability.
+- **Semester Tracking**: Set active semester start and end dates to pause tracking during vacations and bound date selector navigation.
 - Quick action speed dial on Home screen for Extra Classes, Rescheduling, Adding Subjects, and Adding Timetable Entries.
 
 ### ⏱️ Multi-Hour & Partial Unit Tracking
@@ -110,8 +117,9 @@ $$
 - **Language**: Kotlin 2.0 (100% Native)
 - **UI Framework**: Jetpack Compose & Material Design 3
 - **Architecture**: Single-Activity, MVVM (Model-View-ViewModel), Clean Architecture with Repository Pattern
-- **Database**: Room Database with KSP (Kotlin Symbol Processing) & Kotlin Coroutine Flow
-- **Preferences**: Android DataStore Preferences
+- **Database**: Room Database v2 with KSP (Kotlin Symbol Processing), Idempotent Migrations & Kotlin Coroutine Flow
+- **Preferences**: Android Jetpack DataStore Preferences with Corruption Auto-Recovery
+- **Location & Geofencing**: Google Play Services Location & Geofencing API with native Android LocationManager fallback
 - **Background Operations**: WorkManager & AlarmManager
 - **Navigation**: Type-safe Navigation Compose
 - **Data Export**: Gson (JSON) & OpenCSV (CSV) via Storage Access Framework (SAF)

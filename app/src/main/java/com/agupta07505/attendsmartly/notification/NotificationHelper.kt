@@ -25,9 +25,14 @@ object NotificationHelper {
     const val CHANNEL_ID = "AttendSmartly_class_reminders"
     const val CHANNEL_NAME = "Class Reminders"
 
+    const val CHANNEL_AUTO_ATTENDANCE_ID = "AttendSmartly_auto_attendance"
+    const val CHANNEL_AUTO_ATTENDANCE_NAME = "Auto-Attendance Alerts"
+
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            
+            val reminderChannel = NotificationChannel(
                 CHANNEL_ID,
                 CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_HIGH
@@ -35,8 +40,17 @@ object NotificationHelper {
                 description = "Reminders for upcoming college classes"
                 enableVibration(true)
             }
-            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
+            manager.createNotificationChannel(reminderChannel)
+
+            val autoChannel = NotificationChannel(
+                CHANNEL_AUTO_ATTENDANCE_ID,
+                CHANNEL_AUTO_ATTENDANCE_NAME,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications when attendance is automatically marked via location"
+                enableVibration(true)
+            }
+            manager.createNotificationChannel(autoChannel)
         }
     }
 
@@ -162,5 +176,52 @@ object NotificationHelper {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    fun showAutoAttendanceNotification(
+        context: Context,
+        notificationId: Int,
+        subjectName: String,
+        room: String,
+        minutesDwell: Int = 5
+    ) {
+        createNotificationChannel(context)
+
+        val openAppIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val openAppPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId,
+            openAppIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val roomText = if (room.isNotBlank()) " in $room" else ""
+        val contentTitle = "✅ Marked Present: $subjectName"
+        val contentText = "Automatically marked present$roomText after being in classroom for $minutesDwell minutes."
+
+        val appIconLarge = try {
+            BitmapFactory.decodeResource(context.resources, R.mipmap.ic_launcher)
+        } catch (_: Exception) {
+            null
+        }
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_AUTO_ATTENDANCE_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .apply {
+                if (appIconLarge != null) {
+                    setLargeIcon(appIconLarge)
+                }
+            }
+            .setContentTitle(contentTitle)
+            .setContentText(contentText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(openAppPendingIntent)
+
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(notificationId, builder.build())
     }
 }

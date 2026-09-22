@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -40,6 +40,9 @@ data class TimetableEntryEntity(
     val repeatType: String = "WEEKLY",
     val notes: String = "",
     val isActive: Boolean = true,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val locationRadiusMeters: Int = 50,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

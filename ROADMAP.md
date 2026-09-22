@@ -11,10 +11,39 @@ This document outlines the official development roadmap and future feature speci
 | **v1.0.0** | :white_check_mark: Completed | Q3 2026 | Core Attendance Tracker, Timetable Builder, Bunk Calculator, Smart OCR |
 | **v1.1.0** | :white_check_mark: Completed | Q3 2026 | Notification Preferences, Gemini Onboarding & Precision Math |
 | **v2.0.0** | :white_check_mark: Completed | Q3 2026 | Class Rescheduling, Extra Classes, Modular Settings & Roundtrip Data Integrity |
-| **v2.1.0** | 🟡 In Planning | Q4 2026 | Android Glance Widgets, Interactive Notifications & Calendar Sync |
-| **v2.2.0** | ⏳ Scheduled | Q1 2027 | Multi-Semester Archiving, Historical Comparison & Term Reports |
-| **v2.3.0** | ⏳ Scheduled | Q2 2027 | Advanced "What-If" Scenario Simulator, Exam Schedules |
-| **v3.0.0** | 🔮 Vision | Q3 2027 | Wear OS App Companion, Opt-In Encrypted Cloud Sync (WebDAV/Drive) |
+| **v3.0.0** | :white_check_mark: Completed | Q3 2026 | Classroom GPS Location, 5-Min Dwell Auto-Attendance & Zero-Crash Startup Architecture |
+| **v3.1.0** | 🟡 In Planning | Q4 2026 | Android Glance Widgets, Interactive Notifications & Calendar Sync |
+| **v3.2.0** | ⏳ Scheduled | Q1 2027 | Multi-Semester Archiving, Historical Comparison & Term Reports |
+| **v3.3.0** | ⏳ Scheduled | Q2 2027 | Advanced "What-If" Scenario Simulator, Exam Schedules |
+| **v4.0.0** | 🔮 Vision | Q3 2027 | Wear OS App Companion, Opt-In Encrypted Cloud Sync (WebDAV/Drive) |
+
+---
+
+## 🎯 Version 3.0.0 — Classroom GPS Location, Auto-Attendance & Self-Healing Architecture
+
+### 📍 Classroom GPS Location & 5-Minute Dwell Auto-Attendance
+- [x] GPS coordinate tagging for subjects with one-tap location acquisition and configurable detection radius (`25m`, `50m`, `100m`, `150m`).
+- [x] Timetable slot coordinate override support for practical labs and tutorial rooms.
+- [x] Google Play Services Geofencing with 5-minute dwell loitering detection (`GEOFENCE_TRANSITION_DWELL`).
+- [x] Real-time background and foreground presence checker (`LocationAttendanceManager`).
+- [x] Dedicated Location Auto-Attendance card in Settings with permission indicator and toggle.
+- [x] Visual `AUTO-MARKED` and `📍 [radius]m` badges on ClassCard composables.
+- [x] Dedicated `AttendSmartly_auto_attendance` high-priority notification channel.
+
+### 🛡️ Zero-Crash Startup & Self-Healing Architecture
+- [x] Idempotent Room migration `MIGRATION_1_2` with `PRAGMA table_info` column discovery preventing `SQLiteException`.
+- [x] Complete backward compatibility and migration recovery for legacy 1.x columns.
+- [x] Jetpack DataStore `ReplaceFileCorruptionHandler` auto-recovering from corrupted `.preferences_pb` files.
+- [x] Android 12+ Approximate location (`ACCESS_COARSE_LOCATION`) safety avoiding `SecurityException`.
+- [x] Google Play Services availability detection with native Android `LocationManager` fallback.
+- [x] Android 10+ background location permission checks before geofence registration.
+- [x] Process-level startup try-catch guards in `Application.onCreate` and `ReminderWorker`.
+- [x] Compose LazyColumn composite unique key hardening across all list screens.
+
+### 📅 Semester Tracking & Dynamic Theme Custom Palettes
+- [x] Semester Start/End date configuration with native Material date pickers.
+- [x] Automatic pause and boundary enforcement for dates outside the active semester.
+- [x] Material 3 seed color algorithm generating rich, harmonious custom color palettes from HEX inputs.
 
 ---
 

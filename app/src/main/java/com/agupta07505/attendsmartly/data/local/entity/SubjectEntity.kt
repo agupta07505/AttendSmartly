@@ -1,4 +1,4 @@
-﻿/*
+/*
  * AttendSmartly (2026)
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
@@ -28,6 +28,9 @@ data class SubjectEntity(
     val defaultReminderMinutes: Int = 10,
     val notes: String = "",
     val isArchived: Boolean = false,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val locationRadiusMeters: Int = 50,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )
