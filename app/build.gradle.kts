@@ -16,8 +16,8 @@ android {
     applicationId = "com.agupta07505.attendsmartly"
     minSdk = 24
     targetSdk = 36
-    versionCode = 3
-    versionName = "2.2.0"
+    versionCode = 4
+    versionName = "3.0.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -125,7 +125,7 @@ dependencies {
   implementation(libs.logging.interceptor)
   implementation(libs.moshi.kotlin)
   implementation(libs.okhttp)
-  // implementation(libs.play.services.location)
+  implementation(libs.play.services.location)
   implementation(libs.retrofit)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)

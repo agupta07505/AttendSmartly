@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -158,7 +159,7 @@ fun SubjectsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
-                    items(subjectsWithSummary, key = { it.subject.id }) { item ->
+                    itemsIndexed(subjectsWithSummary, key = { index, item -> "${item.subject.id}_$index" }) { _, item ->
                         val subject = item.subject
                         val subjectColor = Color(subject.colorValue.toInt())
 

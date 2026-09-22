@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <application
         android:name=".AttendSmartlyApplication"
@@ -50,6 +53,11 @@
                 <action android:name="com.agupta07505.attendsmartly.ACTION_TRIGGER_REMINDER" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".receiver.GeofenceBroadcastReceiver"
+            android:enabled="true"
+            android:exported="true" />
     </application>
 
 </manifest>

@@ -7,6 +7,10 @@
 
 package com.agupta07505.attendsmartly.ui.screens.timetable
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -23,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,6 +38,8 @@ import com.agupta07505.attendsmartly.data.local.entity.SubjectEntity
 import com.agupta07505.attendsmartly.data.local.entity.TimetableEntryEntity
 import com.agupta07505.attendsmartly.domain.calculator.AttendanceCalculator
 import com.agupta07505.attendsmartly.util.DateUtils
+import com.agupta07505.attendsmartly.util.LocationHelper
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -55,6 +62,32 @@ fun AddEditTimetableDialog(
     var endTime by remember { mutableStateOf(initialEntry?.endTime ?: "12:00") }
     var roomOverride by remember { mutableStateOf(initialEntry?.roomOverride ?: "") }
     var teacherOverride by remember { mutableStateOf(initialEntry?.teacherOverride ?: "") }
+
+    var latitudeOverride by remember { mutableStateOf(initialEntry?.latitude) }
+    var longitudeOverride by remember { mutableStateOf(initialEntry?.longitude) }
+    var radiusOverride by remember { mutableIntStateOf(initialEntry?.locationRadiusMeters ?: 50) }
+    var isFetchingLocation by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { perms ->
+        val fineGranted = perms[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val coarseGranted = perms[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (fineGranted || coarseGranted) {
+            isFetchingLocation = true
+            coroutineScope.launch {
+                val loc = LocationHelper.getCurrentLocation(context)
+                if (loc != null) {
+                    latitudeOverride = loc.latitude
+                    longitudeOverride = loc.longitude
+                }
+                isFetchingLocation = false
+            }
+        }
+    }
 
     var effectiveStartDate by remember { mutableStateOf(DateUtils.todayIso()) }
     var preservePastHistory by remember { mutableStateOf(true) }
@@ -344,6 +377,129 @@ fun AddEditTimetableDialog(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    // Classroom GPS Location Override
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Classroom Location Override (Optional)",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (latitudeOverride != null && longitudeOverride != null) {
+                                "Using custom location for this specific timetable slot."
+                            } else if (selectedSubject?.latitude != null && selectedSubject?.longitude != null) {
+                                "Inheriting subject location: ${LocationHelper.formatCoordinates(selectedSubject!!.latitude!!, selectedSubject!!.longitude!!)} (${selectedSubject!!.locationRadiusMeters}m)"
+                            } else {
+                                "No classroom location set on subject or timetable entry."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (latitudeOverride != null && longitudeOverride != null) Icons.Default.LocationOn else Icons.Default.LocationOff,
+                                            contentDescription = null,
+                                            tint = if (latitudeOverride != null && longitudeOverride != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Column {
+                                            Text(
+                                                text = if (latitudeOverride != null && longitudeOverride != null) {
+                                                    LocationHelper.formatCoordinates(latitudeOverride!!, longitudeOverride!!)
+                                                } else {
+                                                    "No override location"
+                                                },
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            if (latitudeOverride != null && longitudeOverride != null) {
+                                                Text(
+                                                    text = "Override range: $radiusOverride meters radius",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    if (latitudeOverride != null && longitudeOverride != null) {
+                                        IconButton(
+                                            onClick = {
+                                                latitudeOverride = null
+                                                longitudeOverride = null
+                                            },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Close,
+                                                contentDescription = "Clear Override",
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        if (LocationHelper.hasLocationPermission(context)) {
+                                            isFetchingLocation = true
+                                            coroutineScope.launch {
+                                                val loc = LocationHelper.getCurrentLocation(context)
+                                                if (loc != null) {
+                                                    latitudeOverride = loc.latitude
+                                                    longitudeOverride = loc.longitude
+                                                }
+                                                isFetchingLocation = false
+                                            }
+                                        } else {
+                                            locationPermissionLauncher.launch(
+                                                arrayOf(
+                                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                                )
+                                            )
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    if (isFetchingLocation) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Detecting...")
+                                    } else {
+                                        Icon(Icons.Default.MyLocation, null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(if (latitudeOverride == null) "Set Slot GPS Location" else "Update Location")
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
@@ -377,6 +533,9 @@ fun AddEditTimetableDialog(
                                 attendanceUnitCount = unitCount,
                                 reminderMinutes = reminderMinutes,
                                 startDate = effectiveStartDate,
+                                latitude = latitudeOverride,
+                                longitude = longitudeOverride,
+                                locationRadiusMeters = radiusOverride,
                                 updatedAt = System.currentTimeMillis()
                             )
                             onSave(entry, preservePastHistory, effectiveStartDate)

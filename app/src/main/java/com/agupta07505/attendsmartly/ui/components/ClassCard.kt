@@ -136,7 +136,35 @@ fun ClassCard(
                             modifier = Modifier.weight(1f, fill = false)
                         )
                         val isExtraClass = session != null && session.timetableEntryId == null && !isRescheduledIncoming && !isRescheduledAway
-                        if (isRescheduledIncoming) {
+                        val hasLocation = (timetableEntry.latitude != null && timetableEntry.longitude != null) || (subject.latitude != null && subject.longitude != null)
+                        val isAutoMarked = session?.autoMarked == true
+
+                        if (isAutoMarked) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.GpsFixed,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(10.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Text(
+                                        text = "AUTO-MARKED",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 9.sp,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+                        } else if (isRescheduledIncoming) {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
                                 color = MaterialTheme.colorScheme.tertiaryContainer
@@ -163,6 +191,32 @@ fun ClassCard(
                                     fontSize = 9.sp,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
+                            }
+                        } else if (hasLocation) {
+                            val radius = timetableEntry.locationRadiusMeters.takeIf { it > 0 } ?: subject.locationRadiusMeters
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.LocationOn,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(10.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "${radius}m",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 9.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }

@@ -7,12 +7,14 @@
 
 package com.agupta07505.attendsmartly.ui.screens.settings
 
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.agupta07505.attendsmartly.util.LocationHelper
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -144,6 +146,13 @@ fun SettingsScreen(
         if (granted) {
             viewModel.updateNotificationsEnabled(true)
         }
+    }
+
+    var locationPermissionRefreshTrigger by remember { mutableIntStateOf(0) }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        locationPermissionRefreshTrigger++
     }
 
     // SAF Activity Launchers
@@ -687,6 +696,194 @@ fun SettingsScreen(
                                                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                                                             fontWeight = FontWeight.Medium,
                                                             modifier = Modifier.weight(1f, fill = false)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Location-Based Auto-Attendance Card
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(20.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(18.dp),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.weight(1f),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                                    modifier = Modifier.size(38.dp)
+                                                ) {
+                                                    Box(contentAlignment = Alignment.Center) {
+                                                        Icon(
+                                                            Icons.Default.LocationOn,
+                                                            contentDescription = null,
+                                                            tint = MaterialTheme.colorScheme.primary,
+                                                            modifier = Modifier.size(20.dp)
+                                                        )
+                                                    }
+                                                }
+                                                Column(modifier = Modifier.weight(1f, fill = false)) {
+                                                    Text("Location Auto-Attendance", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                                    Text(
+                                                        if (prefs.autoAttendanceEnabled) "Auto-marks Present after 5 mins in classroom"
+                                                        else "Off — Manual attendance marking only",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+
+                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                            Switch(
+                                                checked = prefs.autoAttendanceEnabled,
+                                                onCheckedChange = { enabled ->
+                                                    viewModel.updateAutoAttendanceEnabled(enabled)
+                                                    if (enabled && !LocationHelper.hasLocationPermission(context)) {
+                                                        locationPermissionLauncher.launch(
+                                                            arrayOf(
+                                                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                                                Manifest.permission.ACCESS_COARSE_LOCATION
+                                                            )
+                                                        )
+                                                    }
+                                                }
+                                            )
+                                        }
+
+                                        if (prefs.autoAttendanceEnabled) {
+                                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+
+                                            // Permission Status Info
+                                            val hasPermission = LocationHelper.hasLocationPermission(context)
+                                            val hasBgPermission = LocationHelper.hasBackgroundLocationPermission(context)
+
+                                            Surface(
+                                                shape = RoundedCornerShape(12.dp),
+                                                color = if (hasPermission) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                                                        else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(12.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = if (hasPermission) Icons.Default.GpsFixed else Icons.Default.GpsOff,
+                                                        contentDescription = null,
+                                                        tint = if (hasPermission) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                    Column(modifier = Modifier.weight(1f)) {
+                                                        Text(
+                                                            text = if (hasPermission) {
+                                                                if (hasBgPermission) "Location Permission Granted (All the time)"
+                                                                else "Location Permission: While in Use"
+                                                            } else {
+                                                                "Location Permission Required"
+                                                            },
+                                                            fontWeight = FontWeight.Bold,
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = if (hasPermission) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
+                                                        )
+                                                        Text(
+                                                            text = if (hasPermission) {
+                                                                if (hasBgPermission) "Background geofence and in-app presence detection are both active."
+                                                                else "Attendance marks automatically when app is open during class."
+                                                            } else {
+                                                                "Grant permission so AttendSmartly can detect classroom arrival."
+                                                            },
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                    if (!hasPermission) {
+                                                        TextButton(
+                                                            onClick = {
+                                                                locationPermissionLauncher.launch(
+                                                                    arrayOf(
+                                                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                                                    )
+                                                                )
+                                                            }
+                                                        ) {
+                                                            Text("Grant")
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            // Dwell rule indicator
+                                            Surface(
+                                                shape = RoundedCornerShape(12.dp),
+                                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(12.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Timer,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                    Column {
+                                                        Text(
+                                                            text = "Dwell Duration Requirement",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                        Text(
+                                                            text = "Must be present at the classroom location for at least 5 minutes during scheduled class time.",
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            // Default range radius selector
+                                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Text(
+                                                    text = "Default Classroom Range Radius:",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    listOf(25, 50, 100, 150).forEach { r ->
+                                                        val selected = prefs.autoAttendanceRadiusMeters == r
+                                                        FilterChip(
+                                                            selected = selected,
+                                                            onClick = { viewModel.updateAutoAttendanceRadiusMeters(r) },
+                                                            label = { Text("${r}m") },
+                                                            leadingIcon = if (selected) {
+                                                                { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                                                            } else null
                                                         )
                                                     }
                                                 }

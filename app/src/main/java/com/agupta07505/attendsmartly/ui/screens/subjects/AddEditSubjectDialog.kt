@@ -7,6 +7,10 @@
 
 package com.agupta07505.attendsmartly.ui.screens.subjects
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -36,6 +41,8 @@ import com.agupta07505.attendsmartly.data.local.entity.SubjectEntity
 import com.agupta07505.attendsmartly.domain.calculator.AttendanceCalculator
 import com.agupta07505.attendsmartly.domain.model.SubjectType
 import com.agupta07505.attendsmartly.ui.theme.SubjectPalette
+import com.agupta07505.attendsmartly.util.LocationHelper
+import kotlinx.coroutines.launch
 
 private fun formatColorToHex(colorVal: Long): String {
     val argb = colorVal.toInt()
@@ -94,6 +101,32 @@ fun AddEditSubjectDialog(
     var targetText by remember { mutableStateOf((initialSubject?.targetPercentage ?: 75.0).toString()) }
 
     var showTypeDropdown by remember { mutableStateOf(false) }
+
+    var latitude by remember { mutableStateOf(initialSubject?.latitude) }
+    var longitude by remember { mutableStateOf(initialSubject?.longitude) }
+    var radiusMeters by remember { mutableIntStateOf(initialSubject?.locationRadiusMeters ?: 50) }
+    var isFetchingLocation by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { perms ->
+        val fineGranted = perms[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val coarseGranted = perms[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (fineGranted || coarseGranted) {
+            isFetchingLocation = true
+            coroutineScope.launch {
+                val loc = LocationHelper.getCurrentLocation(context)
+                if (loc != null) {
+                    latitude = loc.latitude
+                    longitude = loc.longitude
+                }
+                isFetchingLocation = false
+            }
+        }
+    }
 
     val typesList = SubjectType.values().map { it.displayName }
 
@@ -366,6 +399,157 @@ fun AddEditSubjectDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
 
+                    // Classroom GPS Location & Range (Auto-Attendance)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Classroom GPS Location (Auto-Attendance)",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Auto-mark attendance as Present when you are at the classroom for 5 minutes during class time.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (latitude != null && longitude != null) Icons.Default.LocationOn else Icons.Default.LocationOff,
+                                            contentDescription = null,
+                                            tint = if (latitude != null && longitude != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Column {
+                                            Text(
+                                                text = if (latitude != null && longitude != null) {
+                                                    LocationHelper.formatCoordinates(latitude!!, longitude!!)
+                                                } else {
+                                                    "No classroom location set"
+                                                },
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            if (latitude != null && longitude != null) {
+                                                Text(
+                                                    text = "Detection range: $radiusMeters meters radius",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    if (latitude != null && longitude != null) {
+                                        IconButton(
+                                            onClick = {
+                                                latitude = null
+                                                longitude = null
+                                            },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Close,
+                                                contentDescription = "Clear Location",
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            if (LocationHelper.hasLocationPermission(context)) {
+                                                isFetchingLocation = true
+                                                coroutineScope.launch {
+                                                    val loc = LocationHelper.getCurrentLocation(context)
+                                                    if (loc != null) {
+                                                        latitude = loc.latitude
+                                                        longitude = loc.longitude
+                                                    }
+                                                    isFetchingLocation = false
+                                                }
+                                            } else {
+                                                locationPermissionLauncher.launch(
+                                                    arrayOf(
+                                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                                    )
+                                                )
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        if (isFetchingLocation) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(16.dp),
+                                                strokeWidth = 2.dp
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("Getting Current Location...")
+                                        } else {
+                                            Icon(Icons.Default.MyLocation, null, modifier = Modifier.size(18.dp))
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(if (latitude == null) "Use Current GPS Location" else "Update to Current Location")
+                                        }
+                                    }
+                                }
+
+                                // Range radius selector
+                                if (latitude != null && longitude != null) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            text = "Classroom Range Radius:",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            listOf(25, 50, 100, 150).forEach { r ->
+                                                val selected = radiusMeters == r
+                                                FilterChip(
+                                                    selected = selected,
+                                                    onClick = { radiusMeters = r },
+                                                    label = { Text("${r}m") },
+                                                    colors = FilterChipDefaults.filterChipColors(
+                                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     HorizontalDivider()
 
                     Text(
@@ -446,6 +630,9 @@ fun AddEditSubjectDialog(
                                 attendanceUnitMinutes = unitMins,
                                 defaultAttendanceUnits = computedUnits,
                                 targetPercentage = target,
+                                latitude = latitude,
+                                longitude = longitude,
+                                locationRadiusMeters = radiusMeters,
                                 updatedAt = System.currentTimeMillis()
                             )
                             onSave(updated)

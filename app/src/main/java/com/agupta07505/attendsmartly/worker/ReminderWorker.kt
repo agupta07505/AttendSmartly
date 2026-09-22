@@ -110,6 +110,14 @@ class ReminderWorker(
                     }
                 }
             }
+
+            if (userPrefs.autoAttendanceEnabled) {
+                try {
+                    com.agupta07505.attendsmartly.location.ClassGeofenceManager.registerGeofencesForDay(context, todayIso)
+                    com.agupta07505.attendsmartly.location.LocationAttendanceManager.checkOngoingClassPresence(context)
+                } catch (_: Exception) {}
+            }
+
             Result.success()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -121,19 +129,23 @@ class ReminderWorker(
         private const val WORK_NAME = "AttendSmartly_reminder_work"
 
         fun schedulePeriodicReminderCheck(context: Context) {
-            val constraints = Constraints.Builder()
-                .setRequiresBatteryNotLow(true)
-                .build()
+            try {
+                val constraints = Constraints.Builder()
+                    .setRequiresBatteryNotLow(true)
+                    .build()
 
-            val workRequest = PeriodicWorkRequestBuilder<ReminderWorker>(15, TimeUnit.MINUTES)
-                .setConstraints(constraints)
-                .build()
+                val workRequest = PeriodicWorkRequestBuilder<ReminderWorker>(15, TimeUnit.MINUTES)
+                    .setConstraints(constraints)
+                    .build()
 
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
-                workRequest
-            )
+                WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                    WORK_NAME,
+                    ExistingPeriodicWorkPolicy.KEEP,
+                    workRequest
+                )
+            } catch (e: Throwable) {
+                e.printStackTrace()
+            }
         }
     }
 }

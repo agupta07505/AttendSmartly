@@ -60,6 +60,24 @@ class SettingsViewModel(
         }
     }
 
+    fun updateAutoAttendanceEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.updateAutoAttendanceEnabled(enabled)
+        }
+    }
+
+    fun updateAutoAttendanceDwellMinutes(minutes: Int) {
+        viewModelScope.launch {
+            preferencesRepository.updateAutoAttendanceDwellMinutes(minutes)
+        }
+    }
+
+    fun updateAutoAttendanceRadiusMeters(radius: Int) {
+        viewModelScope.launch {
+            preferencesRepository.updateAutoAttendanceRadiusMeters(radius)
+        }
+    }
+
     fun updateTrackBySemester(enabled: Boolean) {
         viewModelScope.launch {
             preferencesRepository.updateTrackBySemester(enabled)
